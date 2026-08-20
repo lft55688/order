@@ -121,10 +121,11 @@
          * 1. 系統設定與全域變數
          * ==========================================
          */
-        // ⚠️ 測試前請將此處替換為你的 Gemini API Key
+        // 使用 prompt 讓使用者輸入 API Key
         const GEMINI_API_KEY = prompt("請輸入你的 Gemini API Key："); 
         
         let base64Image = "";
+        let imageMimeType = "image/jpeg"; // 預設 MIME 類型
         let parsedMenuData = [];     // 存放 AI 解析後/編輯中的資料
         let publishedMenuData = [];  // 正式發布的資料
         let cart = [];               // 顧客購物車
@@ -166,6 +167,8 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            imageMimeType = file.type || "image/jpeg"; // 自動取得圖片真實格式
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 const result = e.target.result;
@@ -174,15 +177,15 @@
                 previewImg.src = result;
                 document.getElementById('preview-container').classList.remove('hidden');
                 
-                // 擷取 Base64 的純資料部分 (移除 data:image/jpeg;base64, 等前綴)
+                // 擷取 Base64 的純資料部分
                 base64Image = result.split(',')[1];
             };
             reader.readAsDataURL(file);
         }
 
         async function analyzeImage() {
-            if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_API_KEY_HERE") {
-                alert("請先在 JavaScript 程式碼中填寫您的 GEMINI_API_KEY！");
+            if (!GEMINI_API_KEY) {
+                alert("請輸入您的 GEMINI_API_KEY！");
                 return;
             }
             if (!base64Image) {
@@ -200,9 +203,9 @@
             text.innerText = "AI 努力辨識中...";
             spinner.classList.remove('hidden');
 
-            // 呼叫 Gemini Vision API
+            // 呼叫 Gemini Vision API (✅ 已修正變數名為 GEMINI_API_KEY)
             try {
-		const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -213,7 +216,7 @@
                                          Return ONLY a valid JSON array. Do not wrap it in markdown code blocks like \`\`\`json. 
                                          The structure MUST be exactly like this: 
                                          [{"category": "Category Name", "items": [{"name": "Item Name", "price": 150}]}]` },
-                                { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                                { inline_data: { mime_type: imageMimeType, data: base64Image } }
                             ]
                         }],
                         generationConfig: {
@@ -269,7 +272,6 @@
                 const section = document.createElement('div');
                 section.className = "bg-slate-50 p-4 rounded-xl border border-slate-200";
 
-                // 類別輸入框
                 let html = `
                     <div class="mb-4 flex items-center gap-3">
                         <label class="font-bold text-slate-700 whitespace-nowrap">分類名稱:</label>
@@ -318,7 +320,6 @@
             });
         }
 
-        // 綁定 input onchange 事件，即時更新 parsedMenuData
         function updateData(cIndex, iIndex, field, value) {
             if (field === 'category') {
                 parsedMenuData[cIndex].category = value;
@@ -338,10 +339,7 @@
                 return;
             }
             
-            // 將校正完畢的資料正式發布 (深拷貝以策安全)
             publishedMenuData = JSON.parse(JSON.stringify(parsedMenuData));
-            
-            // 自動切換到顧客畫面
             switchTab('customer');
             alert("🎉 菜單發布成功！");
         }
@@ -399,19 +397,16 @@
             });
         }
 
-        // 簡單購物車功能
         function addToCart(name, price) {
             cart.push({ name, price });
             document.getElementById('cart-count').innerText = cart.length;
             
-            // 簡單的反饋動畫
             const countBadge = document.getElementById('cart-count');
             countBadge.classList.add('scale-150', 'text-emerald-500');
             setTimeout(() => {
                 countBadge.classList.remove('scale-150', 'text-emerald-500');
             }, 300);
         }
-
     </script>
 </body>
 </html>
