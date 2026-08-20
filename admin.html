@@ -76,7 +76,7 @@
 
     <script>
         // ⚠️ 請填入您的 API Key 與 Google Apps Script URL
-        const GEMINI_API_KEY = "AQ.Ab8RN6JRYGgSCTVLJJa-OwpaIoxzgzLhXQZHpB9RMqQgeheZ_g";
+        const GEMINI_API_KEY = "AQ.Ab8RN6JRYGgSCTVLJJa-OwpaIoxzgzLhXQZHpB9RMqQgeheZ_g"; // 相容 AQ. 與 AIza 開頭的金鑰
         const GAS_URL = "https://script.google.com/macros/s/AKfycbylSbLzr0dgEYS9YUNPYM2fQKLQDsFSmAepKf_WpkOqMNi48P37SVChNNOsyMFP7lySHg/exec"; 
 
         let base64Image = "";
@@ -105,11 +105,15 @@
             btn.disabled = true; text.innerText = "辨識中..."; spinner.classList.remove('hidden');
 
             try {
-                // 建議使用 gemini-3.5-flash 或 gemini-2.5-flash
+                // 1. 修正為標準 gemini-2.5-flash 模型名稱
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': GEMINI_API_KEY // 2. 補上 x-goog-api-key 確保 AQ. 開頭金鑰能正確授權
+                    },
                     body: JSON.stringify({
                         contents: [{ parts: [
                             { text: `Extract menu items and prices. Return ONLY a valid JSON array: [{"category": "Name", "items": [{"name": "Item", "price": 150}]}]` },
@@ -121,14 +125,13 @@
 
                 const data = await response.json();
 
-                // 1. 檢查 HTTP 狀態或 API 是否回傳 error 結構
+                // 3. 加入完整防錯驗證
                 if (!response.ok || data.error) {
                     throw new Error(data.error ? data.error.message : `HTTP 請求失敗 (${response.status})`);
                 }
 
-                // 2. 檢查是否有回傳 candidates 結果
                 if (!data.candidates || data.candidates.length === 0) {
-                    throw new Error("AI 未能產生回應，請確認圖片是否清晰或符合規範。");
+                    throw new Error("AI 未能產生有效結果，請確認菜單圖片是否清晰。");
                 }
 
                 let rawText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
