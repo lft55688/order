@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 動態菜單管理系統</title>
+    <title>AI 動態菜單與點餐系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
-        /* 自定義卷軸樣式 */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
@@ -24,16 +23,16 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col relative">
 
     <!-- 頂部導覽與 Tab 切換 -->
-    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <span class="text-xl font-bold text-indigo-600 flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        AI Menu System
+                        AI Menu & Order
                     </span>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -48,42 +47,55 @@
     <main class="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- ==================== 管理者後台 (Admin Panel) ==================== -->
-        <section id="admin-view" class="space-y-6 block">
+        <section id="admin-view" class="space-y-8 block">
+            
+            <!-- 區塊 1: 菜單管理 -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-lg font-bold mb-4">1. 上傳菜單圖片</h2>
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    1. 菜單管理 (上傳與 AI 辨識)
+                </h2>
                 <div class="flex items-center justify-center w-full">
-                    <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                    <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
-                            <svg class="w-10 h-10 mb-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                            <p class="mb-2 text-sm font-semibold">點擊上傳圖片</p>
-                            <p class="text-xs">支援 PNG, JPG, JPEG</p>
+                            <svg class="w-8 h-8 mb-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                            <p class="mb-2 text-sm font-semibold">點擊上傳菜單圖片</p>
                         </div>
                         <input id="dropzone-file" type="file" accept="image/*" class="hidden" onchange="handleImageUpload(event)" />
                     </label>
                 </div>
                 
-                <!-- 預覽區塊 -->
-                <div id="preview-container" class="hidden mt-6">
-                    <p class="text-sm font-medium text-slate-700 mb-2">圖片預覽：</p>
-                    <img id="image-preview" class="max-w-full h-auto max-h-64 rounded-lg border border-slate-200 shadow-sm mx-auto" />
-                    <div class="mt-4 flex justify-center">
-                        <button id="analyze-btn" onclick="analyzeImage()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm">
-                            <span id="analyze-text">交給 AI 辨識</span>
-                            <div id="analyze-spinner" class="spinner hidden"></div>
-                        </button>
-                    </div>
+                <div id="preview-container" class="hidden mt-6 text-center">
+                    <img id="image-preview" class="max-w-full h-auto max-h-48 rounded-lg border border-slate-200 shadow-sm mx-auto mb-4" />
+                    <button id="analyze-btn" onclick="analyzeImage()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm">
+                        <span id="analyze-text">交給 AI 辨識</span>
+                        <div id="analyze-spinner" class="spinner hidden"></div>
+                    </button>
                 </div>
             </div>
 
-            <!-- 人工校正區塊 (初始隱藏) -->
+            <!-- 人工校正區塊 -->
             <div id="editor-container" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-500 opacity-0 transform translate-y-4">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold">2. 人工校正 (AI 辨識結果)</h2>
+                    <h2 class="text-lg font-bold">人工校正區</h2>
                     <button onclick="publishMenu()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-lg font-medium transition shadow-sm">發布菜單</button>
                 </div>
-                <p class="text-sm text-slate-500 mb-4">請確認 AI 辨識的內容是否正確，您可以直接在此處修改文字與價格。</p>
-                <div id="editor-form" class="space-y-6">
-                    <!-- 動態產生可編輯表單的地方 -->
+                <div id="editor-form" class="space-y-6"></div>
+            </div>
+
+            <!-- 區塊 2: 訂單看板 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    2. 即時訂單看板
+                </h2>
+                
+                <div id="no-orders" class="text-center py-10 text-slate-400">
+                    <p>目前尚無新訂單</p>
+                </div>
+
+                <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                    <!-- 管理端訂單卡片會產生在這裡 -->
                 </div>
             </div>
         </section>
@@ -91,29 +103,61 @@
         <!-- ==================== 顧客點餐前台 (Customer View) ==================== -->
         <section id="customer-view" class="hidden space-y-6">
             
-            <!-- 未發布時的空狀態 -->
             <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-slate-400">
                 <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 <h3 class="text-xl font-medium text-slate-600">請等待店家發布菜單</h3>
-                <p class="text-sm mt-1">目前沒有可用的餐點資訊</p>
             </div>
 
-            <!-- 菜單展示區 -->
             <div id="menu-display" class="hidden">
-                <div class="flex justify-between items-end mb-6">
+                <div class="flex justify-between items-end mb-6 sticky top-16 bg-slate-50 py-4 z-30">
                     <h1 class="text-3xl font-bold text-slate-800">美味菜單</h1>
-                    <div class="text-sm font-medium text-slate-600 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        購物車: <span id="cart-count" class="text-indigo-600 font-bold">0</span> 項
-                    </div>
+                    <!-- 點擊打開購物車 -->
+                    <button onclick="openCartModal()" class="text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-full shadow-lg transition-transform hover:scale-105 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        查看購物車 (<span id="cart-count">0</span>)
+                    </button>
                 </div>
                 <div id="menu-grid" class="space-y-8">
-                    <!-- 動態產生顧客視角菜單的地方 -->
+                    <!-- 菜單會產生在這裡 -->
                 </div>
             </div>
         </section>
 
     </main>
+
+    <!-- ==================== 購物車結帳彈出視窗 (Modal) ==================== -->
+    <div id="cart-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] transform scale-95 transition-transform duration-300" id="cart-modal-content">
+            
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-slate-800">您的購物車</h3>
+                <button onclick="closeCartModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- 購物車內容列表 -->
+            <div class="p-5 overflow-y-auto flex-grow" id="cart-items-container">
+                <!-- 動態載入購物車項目 -->
+            </div>
+
+            <!-- 結帳表單區 -->
+            <div class="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="font-bold text-slate-600">總金額:</span>
+                    <span class="text-2xl font-black text-indigo-600">NT$ <span id="cart-total-price">0</span></span>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">顧客姓名</label>
+                    <input type="text" id="customer-name" placeholder="請輸入您的稱呼" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                </div>
+                <button onclick="submitOrder()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    確認送出訂單
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         /**
@@ -121,14 +165,16 @@
          * 1. 系統設定與全域變數
          * ==========================================
          */
-        // 使用 prompt 讓使用者輸入 API Key
-        const GEMINI_API_KEY = prompt("請輸入你的 Gemini API Key："); 
+        const GEMINI_API_KEY = prompt("請輸入你的 Gemini API Key (測試用)："); 
         
         let base64Image = "";
-        let imageMimeType = "image/jpeg"; // 預設 MIME 類型
-        let parsedMenuData = [];     // 存放 AI 解析後/編輯中的資料
-        let publishedMenuData = [];  // 正式發布的資料
-        let cart = [];               // 顧客購物車
+        let imageMimeType = "image/jpeg"; 
+        let parsedMenuData = [];     
+        let publishedMenuData = [];  
+        
+        // 購物車與訂單系統
+        let cart = [];               
+        let orders = [];             
 
         /**
          * ==========================================
@@ -144,13 +190,14 @@
             if (tab === 'admin') {
                 adminView.classList.remove('hidden');
                 customerView.classList.add('hidden');
-                
                 tabAdmin.className = "px-4 py-2 rounded-md font-medium text-sm transition-colors bg-indigo-50 text-indigo-700";
                 tabCustomer.className = "px-4 py-2 rounded-md font-medium text-sm transition-colors text-slate-600 hover:bg-slate-50";
+                
+                // 切回管理端時，重新渲染一次訂單，確保最新
+                renderAdminOrders();
             } else {
                 adminView.classList.add('hidden');
                 customerView.classList.remove('hidden');
-                
                 tabCustomer.className = "px-4 py-2 rounded-md font-medium text-sm transition-colors bg-indigo-50 text-indigo-700";
                 tabAdmin.className = "px-4 py-2 rounded-md font-medium text-sm transition-colors text-slate-600 hover:bg-slate-50";
                 
@@ -160,51 +207,36 @@
 
         /**
          * ==========================================
-         * 3. 管理者後台邏輯 (圖片上傳、預覽、AI 辨識)
+         * 3. 菜單解析與發布 (原有功能)
          * ==========================================
          */
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
-            imageMimeType = file.type || "image/jpeg"; // 自動取得圖片真實格式
-
+            imageMimeType = file.type || "image/jpeg";
             const reader = new FileReader();
             reader.onload = function(e) {
                 const result = e.target.result;
-                // 顯示預覽
-                const previewImg = document.getElementById('image-preview');
-                previewImg.src = result;
+                document.getElementById('image-preview').src = result;
                 document.getElementById('preview-container').classList.remove('hidden');
-                
-                // 擷取 Base64 的純資料部分
                 base64Image = result.split(',')[1];
             };
             reader.readAsDataURL(file);
         }
 
         async function analyzeImage() {
-            if (!GEMINI_API_KEY) {
-                alert("請輸入您的 GEMINI_API_KEY！");
-                return;
-            }
-            if (!base64Image) {
-                alert("請先上傳圖片！");
-                return;
-            }
+            if (!GEMINI_API_KEY) return alert("請輸入您的 GEMINI_API_KEY！");
+            if (!base64Image) return alert("請先上傳圖片！");
 
-            // 切換 Loading 狀態
             const btn = document.getElementById('analyze-btn');
             const text = document.getElementById('analyze-text');
             const spinner = document.getElementById('analyze-spinner');
             
-            btn.disabled = true;
-            btn.classList.add('opacity-80', 'cursor-not-allowed');
-            text.innerText = "AI 努力辨識中...";
-            spinner.classList.remove('hidden');
+            btn.disabled = true; btn.classList.add('opacity-80', 'cursor-not-allowed');
+            text.innerText = "AI 努力辨識中..."; spinner.classList.remove('hidden');
 
-            // 呼叫 Gemini Vision API (✅ 已修正變數名為 GEMINI_API_KEY)
             try {
+                // 注意：使用 gemini-3.6-flash
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`;
                 const response = await fetch(url, {
                     method: 'POST',
@@ -212,201 +244,225 @@
                     body: JSON.stringify({
                         contents: [{
                             parts: [
-                                { text: `You are a helpful assistant. Please extract the menu items and prices from this image. 
-                                         Return ONLY a valid JSON array. Do not wrap it in markdown code blocks like \`\`\`json. 
-                                         The structure MUST be exactly like this: 
-                                         [{"category": "Category Name", "items": [{"name": "Item Name", "price": 150}]}]` },
+                                { text: `Extract menu items and prices. Return ONLY a valid JSON array. Structure: [{"category": "Name", "items": [{"name": "Item", "price": 150}]}]` },
                                 { inline_data: { mime_type: imageMimeType, data: base64Image } }
                             ]
                         }],
-                        generationConfig: {
-                            temperature: 0.1, // 降低隨機性，確保結構穩定
-                        }
+                        generationConfig: { temperature: 0.1 }
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`API 請求失敗: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`API 失敗: ${response.status}`);
 
                 const data = await response.json();
-                let rawText = data.candidates[0].content.parts[0].text;
-                
-                // 清理可能包含的 Markdown 格式
-                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-                
+                let rawText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 parsedMenuData = JSON.parse(rawText);
                 
-                // 渲染校正表單
                 renderEditorForm();
                 
-                // 顯示編輯區並加上淡入動畫
-                const editorContainer = document.getElementById('editor-container');
-                editorContainer.classList.remove('hidden');
-                setTimeout(() => {
-                    editorContainer.classList.remove('opacity-0', 'translate-y-4');
-                }, 50);
+                const editor = document.getElementById('editor-container');
+                editor.classList.remove('hidden');
+                setTimeout(() => editor.classList.remove('opacity-0', 'translate-y-4'), 50);
 
             } catch (error) {
-                console.error("AI 辨識錯誤:", error);
-                alert("辨識失敗或 JSON 解析錯誤，請確認 API Key 或重試！\n錯誤訊息：" + error.message);
+                alert("辨識失敗：" + error.message);
             } finally {
-                // 恢復按鈕狀態
-                btn.disabled = false;
-                btn.classList.remove('opacity-80', 'cursor-not-allowed');
-                text.innerText = "重新辨識";
-                spinner.classList.add('hidden');
+                btn.disabled = false; btn.classList.remove('opacity-80', 'cursor-not-allowed');
+                text.innerText = "重新辨識"; spinner.classList.add('hidden');
             }
         }
 
-        /**
-         * ==========================================
-         * 4. 動態渲染可編輯的表單 (校正用)
-         * ==========================================
-         */
         function renderEditorForm() {
-            const formContainer = document.getElementById('editor-form');
-            formContainer.innerHTML = ''; // 清空
-
-            parsedMenuData.forEach((categoryBlock, cIndex) => {
-                const section = document.createElement('div');
-                section.className = "bg-slate-50 p-4 rounded-xl border border-slate-200";
-
-                let html = `
-                    <div class="mb-4 flex items-center gap-3">
-                        <label class="font-bold text-slate-700 whitespace-nowrap">分類名稱:</label>
-                        <input type="text" value="${categoryBlock.category}" 
-                               onchange="updateData(${cIndex}, null, 'category', this.value)"
-                               class="w-full max-w-xs px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left bg-white rounded-lg overflow-hidden shadow-sm border border-slate-200">
-                            <thead class="bg-slate-100 text-slate-600 text-sm">
-                                <tr>
-                                    <th class="px-4 py-3 font-medium">餐點名稱</th>
-                                    <th class="px-4 py-3 font-medium w-32">價格</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                `;
-
-                categoryBlock.items.forEach((item, iIndex) => {
-                    html += `
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-4 py-2">
-                                <input type="text" value="${item.name}" 
-                                       onchange="updateData(${cIndex}, ${iIndex}, 'name', this.value)"
-                                       class="w-full px-2 py-1.5 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded-md bg-transparent focus:bg-white transition-all outline-none">
-                            </td>
-                            <td class="px-4 py-2">
-                                <div class="flex items-center gap-1">
-                                    <span class="text-slate-500">$</span>
-                                    <input type="number" value="${item.price}" 
-                                           onchange="updateData(${cIndex}, ${iIndex}, 'price', this.value)"
-                                           class="w-full px-2 py-1.5 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded-md bg-transparent focus:bg-white transition-all outline-none">
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+            const container = document.getElementById('editor-form');
+            container.innerHTML = '';
+            parsedMenuData.forEach((cat, cIndex) => {
+                let html = `<div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><div class="mb-3"><input type="text" value="${cat.category}" onchange="updateData(${cIndex}, null, 'category', this.value)" class="px-3 py-1.5 border rounded-md font-bold text-slate-700 w-full max-w-xs"></div><table class="w-full bg-white rounded-lg shadow-sm"><tbody>`;
+                cat.items.forEach((item, iIndex) => {
+                    html += `<tr><td class="p-2 border-b"><input type="text" value="${item.name}" onchange="updateData(${cIndex}, ${iIndex}, 'name', this.value)" class="w-full p-1 border hover:border-slate-300 rounded"></td><td class="p-2 border-b w-24"><input type="number" value="${item.price}" onchange="updateData(${cIndex}, ${iIndex}, 'price', this.value)" class="w-full p-1 border hover:border-slate-300 rounded"></td></tr>`;
                 });
-
-                html += `
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                section.innerHTML = html;
-                formContainer.appendChild(section);
+                container.innerHTML += html + `</tbody></table></div>`;
             });
         }
 
-        function updateData(cIndex, iIndex, field, value) {
-            if (field === 'category') {
-                parsedMenuData[cIndex].category = value;
-            } else {
-                parsedMenuData[cIndex].items[iIndex][field] = field === 'price' ? Number(value) : value;
-            }
-        }
+        function updateData(c, i, f, v) { i === null ? parsedMenuData[c][f] = v : parsedMenuData[c].items[i][f] = f === 'price' ? Number(v) : v; }
 
-        /**
-         * ==========================================
-         * 5. 發布菜單
-         * ==========================================
-         */
         function publishMenu() {
-            if (parsedMenuData.length === 0) {
-                alert("沒有資料可以發布！");
-                return;
-            }
-            
+            if (parsedMenuData.length === 0) return alert("沒有資料可以發布！");
             publishedMenuData = JSON.parse(JSON.stringify(parsedMenuData));
             switchTab('customer');
-            alert("🎉 菜單發布成功！");
+            alert("🎉 菜單發布成功！顧客可以開始點餐了。");
+        }
+
+        function renderCustomerMenu() {
+            if (publishedMenuData.length === 0) return;
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('menu-display').classList.remove('hidden');
+            
+            let grid = document.getElementById('menu-grid');
+            grid.innerHTML = '';
+            publishedMenuData.forEach(cat => {
+                let html = `<div><h2 class="text-xl font-bold text-slate-800 border-l-4 border-indigo-500 pl-3 mb-4">${cat.category}</h2><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">`;
+                cat.items.forEach(item => {
+                    html += `<div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between"><h3 class="font-bold text-lg">${item.name}</h3><p class="text-xl font-black text-slate-700 mt-2"><span class="text-sm">NT$</span>${item.price}</p><button onclick="addToCart('${item.name}', ${item.price})" class="mt-4 bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 font-medium py-2 rounded-xl transition flex justify-center items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>加入</button></div>`;
+                });
+                grid.innerHTML += html + `</div></div>`;
+            });
         }
 
         /**
          * ==========================================
-         * 6. 顧客點餐前台邏輯
+         * 4. 購物車與結帳邏輯
          * ==========================================
          */
-        function renderCustomerMenu() {
-            const emptyState = document.getElementById('empty-state');
-            const menuDisplay = document.getElementById('menu-display');
-            const menuGrid = document.getElementById('menu-grid');
+        function addToCart(name, price) {
+            cart.push({ name, price });
+            updateCartCount();
+        }
+
+        function updateCartCount() {
+            const countBtn = document.getElementById('cart-count');
+            countBtn.innerText = cart.length;
+            countBtn.parentElement.classList.add('scale-110');
+            setTimeout(() => countBtn.parentElement.classList.remove('scale-110'), 200);
+        }
+
+        function openCartModal() {
+            const modal = document.getElementById('cart-modal');
+            const content = document.getElementById('cart-modal-content');
+            const itemsContainer = document.getElementById('cart-items-container');
+            const totalPriceEl = document.getElementById('cart-total-price');
             
-            if (publishedMenuData.length === 0) {
-                emptyState.classList.remove('hidden');
-                menuDisplay.classList.add('hidden');
-                return;
-            }
+            // 渲染購物車清單
+            itemsContainer.innerHTML = '';
+            let total = 0;
 
-            emptyState.classList.add('hidden');
-            menuDisplay.classList.remove('hidden');
-            menuGrid.innerHTML = '';
-
-            publishedMenuData.forEach(categoryBlock => {
-                const section = document.createElement('div');
-                
-                let html = `
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800 border-l-4 border-indigo-500 pl-3 mb-4">${categoryBlock.category}</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                `;
-
-                categoryBlock.items.forEach(item => {
-                    html += `
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow flex flex-col justify-between h-full">
-                            <div>
-                                <h3 class="font-bold text-lg text-slate-800 mb-1">${item.name}</h3>
-                                <p class="text-2xl font-black text-slate-700 mt-2"><span class="text-sm font-medium text-slate-400 mr-1">NT$</span>${item.price}</p>
+            if (cart.length === 0) {
+                itemsContainer.innerHTML = '<p class="text-center text-slate-400 py-6">購物車是空的</p>';
+            } else {
+                cart.forEach((item, index) => {
+                    total += item.price;
+                    itemsContainer.innerHTML += `
+                        <div class="flex justify-between items-center py-3 border-b border-slate-50">
+                            <span class="font-medium text-slate-700">${item.name}</span>
+                            <div class="flex items-center gap-4">
+                                <span class="font-bold text-slate-600">$${item.price}</span>
+                                <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 text-sm">刪除</button>
                             </div>
-                            <button onclick="addToCart('${item.name}', ${item.price})" class="mt-5 w-full bg-slate-900 hover:bg-indigo-600 text-white font-medium py-2 rounded-xl transition-colors flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                                加入購物車
-                            </button>
                         </div>
                     `;
                 });
+            }
 
-                html += `
+            totalPriceEl.innerText = total;
+
+            // 顯示動畫
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeCartModal() {
+            const modal = document.getElementById('cart-modal');
+            const content = document.getElementById('cart-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCartCount();
+            openCartModal(); // 重新渲染視窗
+        }
+
+        function submitOrder() {
+            if (cart.length === 0) return alert("購物車沒有東西唷！");
+            
+            const nameInput = document.getElementById('customer-name');
+            const customerName = nameInput.value.trim();
+            if (!customerName) return alert("請輸入您的姓名，方便我們為您送餐！");
+
+            // 建立訂單物件
+            const newOrder = {
+                id: 'ORD-' + Math.floor(Math.random() * 10000), // 產生簡易單號
+                customerName: customerName,
+                time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                items: [...cart], // 複製陣列
+                total: cart.reduce((sum, item) => sum + item.price, 0),
+                status: 'pending' // 處理中
+            };
+
+            // 存入全域訂單陣列
+            orders.unshift(newOrder); // 放進最前面(最新)
+
+            // 清空購物車
+            cart = [];
+            updateCartCount();
+            nameInput.value = '';
+            
+            closeCartModal();
+            alert(`✅ 訂單送出成功！\n${customerName} 您好，店家已收到您的訂單。`);
+        }
+
+        /**
+         * ==========================================
+         * 5. 管理端接收訂單看板
+         * ==========================================
+         */
+        function renderAdminOrders() {
+            const noOrders = document.getElementById('no-orders');
+            const ordersGrid = document.getElementById('orders-grid');
+
+            if (orders.length === 0) {
+                noOrders.classList.remove('hidden');
+                ordersGrid.classList.add('hidden');
+                return;
+            }
+
+            noOrders.classList.add('hidden');
+            ordersGrid.classList.remove('hidden');
+            ordersGrid.innerHTML = '';
+
+            // 渲染所有訂單
+            orders.forEach((order, index) => {
+                // 如果是已完成的，調整顏色
+                const isDone = order.status === 'completed';
+                const cardBg = isDone ? 'bg-slate-100 opacity-60' : 'bg-white border-indigo-100 border-2';
+                
+                // 整理餐點文字
+                const itemsText = order.items.map(i => i.name).join('、');
+
+                ordersGrid.innerHTML += `
+                    <div class="${cardBg} p-5 rounded-xl shadow-sm transition-all flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold bg-slate-800 text-white px-2 py-1 rounded">${order.id}</span>
+                                <span class="text-sm text-slate-500 font-medium">${order.time}</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-1">顧客: ${order.customerName}</h3>
+                            <p class="text-sm text-slate-600 mb-4 line-clamp-2" title="${itemsText}">${itemsText}</p>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mt-2 pt-3 border-t border-slate-200">
+                            <span class="font-black text-indigo-600">NT$ ${order.total}</span>
+                            ${!isDone ? 
+                                `<button onclick="completeOrder(${index})" class="text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1.5 rounded transition">標記完成</button>` 
+                                : 
+                                `<span class="text-xs font-bold text-slate-400">已出餐</span>`
+                            }
                         </div>
                     </div>
                 `;
-                section.innerHTML = html;
-                menuGrid.appendChild(section);
             });
         }
 
-        function addToCart(name, price) {
-            cart.push({ name, price });
-            document.getElementById('cart-count').innerText = cart.length;
-            
-            const countBadge = document.getElementById('cart-count');
-            countBadge.classList.add('scale-150', 'text-emerald-500');
-            setTimeout(() => {
-                countBadge.classList.remove('scale-150', 'text-emerald-500');
-            }, 300);
+        function completeOrder(index) {
+            orders[index].status = 'completed';
+            renderAdminOrders(); // 重新渲染看板
         }
+
     </script>
 </body>
 </html>
