@@ -105,7 +105,8 @@
             btn.disabled = true; text.innerText = "辨識中..."; spinner.classList.remove('hidden');
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`;
+                // 建議使用 gemini-3.5-flash 或 gemini-2.5-flash
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -117,7 +118,19 @@
                         generationConfig: { temperature: 0.1 }
                     })
                 });
+
                 const data = await response.json();
+
+                // 1. 檢查 HTTP 狀態或 API 是否回傳 error 結構
+                if (!response.ok || data.error) {
+                    throw new Error(data.error ? data.error.message : `HTTP 請求失敗 (${response.status})`);
+                }
+
+                // 2. 檢查是否有回傳 candidates 結果
+                if (!data.candidates || data.candidates.length === 0) {
+                    throw new Error("AI 未能產生回應，請確認圖片是否清晰或符合規範。");
+                }
+
                 let rawText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 parsedMenuData = JSON.parse(rawText);
                 
