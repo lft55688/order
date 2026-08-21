@@ -247,14 +247,13 @@
 				`;
 			}
 		}
-// 匯出 PDF (按餐點分類、統計總數與顯示顧客備註)
+// 匯出 PDF (修正：以顧客點餐筆數為 1 份進行總份數加總)
         async function exportToPDF() {
             if (!orders || orders.length === 0) return alert("目前沒有訂單可以匯出！");
 
-            // 1. 將所有訂單資料改依「餐點名稱」進行歸納與統計
             const itemMap = {};
             let grandTotalAmount = 0;
-            let grandTotalQty = 0;
+            let grandTotalPortions = 0; // 全店餐點總份數 (以單筆點餐為 1 份)
 
             orders.forEach(order => {
                 const cName = order.customerName || '未知桌號';
@@ -264,21 +263,28 @@
                 if (Array.isArray(order.items)) {
                     order.items.forEach(item => {
                         const itemName = item.name || '未命名餐點';
-                        const qty = Number(item.qty || 1);
+                        const qty = Number(item.count || item.quantity || item.qty || item.amount || 1);
                         const price = Number(item.price) || 0;
                         const subtotal = price * qty;
+						// 💡 自動捕捉 item 或 order 層級的所有備註名稱 (note / notes / remark / remarks)
+                        const cNote = item.note || item.notes || item.remark || item.remarks || 
+                                      order.note || order.notes || order.remark || order.remarks || '無';
 
                         if (!itemMap[itemName]) {
                             itemMap[itemName] = {
-                                totalQty: 0,
+                                totalPortions: 0, // 總份數 (多少桌/人點了這道)
+                                totalQty: 0,      // 總數量 (如水餃總顆數)
                                 totalAmount: 0,
                                 unitPrice: price,
                                 customers: []
                             };
                         }
 
+                        // 💡 關鍵修正：顧客點一次該餐點即採計為 1 份
+                        itemMap[itemName].totalPortions += 1;
                         itemMap[itemName].totalQty += qty;
                         itemMap[itemName].totalAmount += subtotal;
+
                         itemMap[itemName].customers.push({
                             customerName: cName,
                             time: cTime,
@@ -287,13 +293,13 @@
                             note: cNote
                         });
 
-                        grandTotalQty += qty;
+                        grandTotalPortions += 1; // 總份數加總 +1
                         grandTotalAmount += subtotal;
                     });
                 }
             });
 
-            // 2. 建立 PDF 專用乾淨容器 (完全還原看板風格)
+            // 建立 PDF 繪製容器
             const pdfContainer = document.createElement('div');
             pdfContainer.style.padding = '20px';
             pdfContainer.style.fontFamily = 'sans-serif';
@@ -304,30 +310,28 @@
                 <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
                     <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房餐點彙總統計單</h1>
                     <p style="font-size: 12px; color: #64748b; margin-top: 5px;">
-                        匯出時間：${new Date().toLocaleString()} | 餐點總份數：<b>${grandTotalQty}</b> 份 | 總額：<b>$${grandTotalAmount}</b>
+                        匯出時間：${new Date().toLocaleString()} | 餐點總份數：<b>${grandTotalPortions}</b> 份 | 總額：<b>$${grandTotalAmount}</b>
                     </p>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
             `;
 
-            // 3. 遍歷每個餐點卡片
             Object.keys(itemMap).forEach(itemName => {
                 const data = itemMap[itemName];
 
                 contentHtml += `
                     <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff;">
-                        <!-- 餐點標題與總數 Badge -->
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
                                 <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
                                 <span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span>
                             </div>
+                            <!-- 顯示該品項總份數與總顆數/數量 -->
                             <div style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 13px; padding: 4px 12px; border-radius: 6px;">
-                                總數 : ${data.totalQty}
+                                總數 : ${data.totalPortions} 份 (共 ${data.totalQty} 個)
                             </div>
                         </div>
 
-                        <!-- 點餐顧客明細列表 -->
                         <div style="display: flex; flex-direction: column; gap: 8px;">
                 `;
 
@@ -344,7 +348,7 @@
                                     <span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span>
                                 </div>
                             </div>
-                            <div style="font-size: 12px; color: #ef4444; margin-top: 2px;">
+                            <div style="font-size: 12px; color: ${c.note !== '無' ? '#dc2626' : '#94a3b8'}; margin-top: 3px; font-weight: ${c.note !== '無' ? 'bold' : 'normal'};">
                                 備註：${c.note}
                             </div>
                         </div>
@@ -365,7 +369,6 @@
             pdfContainer.innerHTML = contentHtml;
             document.body.appendChild(pdfContainer);
 
-            // 4. 設定 PDF 下載參數
             const opt = {
                 margin: 0.4,
                 filename: `廚房餐點統計單_${new Date().toLocaleDateString()}.pdf`,
