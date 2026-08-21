@@ -6,7 +6,18 @@
     <title>美味線上點餐</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Noto Sans TC', sans-serif; } </style>
+    <style> 
+		body { font-family: 'Noto Sans TC', sans-serif; } 
+		/* 隱藏 input type="number" 的預設上下箭頭 */
+		input[type="number"]::-webkit-inner-spin-button, 
+		input[type="number"]::-webkit-outer-spin-button { 
+			-webkit-appearance: none; 
+			margin: 0; 
+		}
+		input[type="number"] {
+			-moz-appearance: textfield;
+		}
+	</style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col relative">
 
@@ -70,7 +81,8 @@
 				<label class="block text-sm font-medium text-slate-700 mb-1">數量</label>
 				<div class="flex items-center gap-3">
 					<button onclick="changeQty(-1)" class="bg-slate-100 hover:bg-slate-200 w-10 h-10 rounded-full font-bold">-</button>
-					<span id="modal-item-qty" class="text-lg font-bold w-8 text-center">1</span>
+					<!-- 這裡改為 input 標籤，並加入 onchange 事件 -->
+					<input type="number" id="modal-item-qty" value="1" min="1" onchange="handleManualQty(this.value)" class="text-lg font-bold w-16 h-10 text-center border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50">
 					<button onclick="changeQty(1)" class="bg-slate-100 hover:bg-slate-200 w-10 h-10 rounded-full font-bold">+</button>
 				</div>
 			</div>
@@ -137,7 +149,7 @@
 			currentSelectedItem = { name, price, qty: 1 };
 			document.getElementById('modal-item-name').innerText = name;
 			document.getElementById('modal-item-price').innerText = price;
-			document.getElementById('modal-item-qty').innerText = '1';
+			document.getElementById('modal-item-qty').value = 1; // 這裡改用 .value 賦值
 			document.getElementById('modal-item-remark').value = '';
 			
 			const modal = document.getElementById('item-modal');
@@ -146,12 +158,24 @@
 		}
 		// 2. 數量增減
 		function changeQty(delta) {
-			let qty = currentSelectedItem.qty + delta;
-			if (qty < 1) qty = 1;
-			currentSelectedItem.qty = qty;
-			document.getElementById('modal-item-qty').innerText = qty;
+			let qtyInput = document.getElementById('modal-item-qty');
+			let currentQty = parseInt(qtyInput.value) || 1;
+			let newQty = currentQty + delta;
+			if (newQty < 1) newQty = 1;
+			
+			currentSelectedItem.qty = newQty;
+			qtyInput.value = newQty;
 		}
-
+		// 手動輸入數字鍵盤
+		function handleManualQty(value) {
+			let newQty = parseInt(value);
+			// 防呆：如果輸入非數字或小於 1，就重置為 1
+			if (isNaN(newQty) || newQty < 1) {
+				newQty = 1;
+			}
+			currentSelectedItem.qty = newQty;
+			document.getElementById('modal-item-qty').value = newQty;
+		}
 		function closeItemModal() {
 			document.getElementById('item-modal').classList.add('opacity-0');
 			setTimeout(() => document.getElementById('item-modal').classList.add('hidden'), 300);
@@ -170,23 +194,44 @@
 			document.getElementById('cart-count').innerText = cart.length;
 			closeItemModal();
 		}
-        function openCartModal() {
-            const modal = document.getElementById('cart-modal');
-            const itemsContainer = document.getElementById('cart-items-container');
-            let total = 0;
-            itemsContainer.innerHTML = '';
+		function openCartModal() {
+			const modal = document.getElementById('cart-modal');
+			const itemsContainer = document.getElementById('cart-items-container');
+			let total = 0;
+			itemsContainer.innerHTML = '';
 
-            if (cart.length === 0) itemsContainer.innerHTML = '<p class="text-center text-slate-400">購物車是空的</p>';
-            else {
-                cart.forEach((item, index) => {
-                    total += item.price * item.qty;
-                    itemsContainer.innerHTML += `<div class="flex justify-between py-2 border-b"><span class="font-medium">${item.name}</span><div class="flex gap-3"><span class="font-bold">$${item.price}</span><button onclick="removeFromCart(${index})" class="text-red-400 text-sm">刪除</button></div></div>`;
-                });
-            }
-            document.getElementById('cart-total-price').innerText = total;
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.classList.remove('opacity-0'), 10);
-        }
+			if (cart.length === 0) {
+				itemsContainer.innerHTML = '<p class="text-center text-slate-400 py-6">購物車是空的</p>';
+			} else {
+				cart.forEach((item, index) => {
+					// 計算該品項總價 (單價 x 數量)
+					let itemTotal = item.price * item.qty;
+					total += itemTotal;
+					
+					// 如果有備註，才顯示備註文字
+					let remarkHtml = item.remark ? `<p class="text-xs text-slate-500 mt-1">備註: ${item.remark}</p>` : '';
+
+					itemsContainer.innerHTML += `
+						<div class="flex justify-between items-center py-3 border-b border-slate-100">
+							<div>
+								<span class="font-medium text-slate-700">${item.name}</span>
+								<!-- 顯示數量 -->
+								<span class="text-indigo-600 font-bold ml-2">x ${item.qty}</span>
+								${remarkHtml}
+							</div>
+							<div class="flex items-center gap-4">
+								<span class="font-bold text-slate-600">$${itemTotal}</span>
+								<button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 text-sm">刪除</button>
+							</div>
+						</div>
+					`;
+				});
+			}
+			
+			document.getElementById('cart-total-price').innerText = total;
+			modal.classList.remove('hidden');
+			setTimeout(() => modal.classList.remove('opacity-0'), 10);
+		}
 
         function closeCartModal() {
             document.getElementById('cart-modal').classList.add('opacity-0');
@@ -213,7 +258,7 @@
                 customerName: customerName,
                 time: new Date().toLocaleString("zh-TW"),
                 items: cart,
-                total: cart.reduce((sum, item) => sum + item.price, 0),
+				total: cart.reduce((sum, item) => sum + (item.price * item.qty), 0),
                 status: 'pending'
             };
 
