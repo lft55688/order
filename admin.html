@@ -320,7 +320,7 @@
                 const data = itemMap[itemName];
 
                 contentHtml += `
-                    <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff;">
+                    <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
                                 <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
@@ -375,6 +375,8 @@
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+				// 💡 新增這行：遇到設有 page-break-inside: avoid 的元素時自動整塊換頁
+				pagebreak: { mode: ['avoid-all', 'css'] }
             };
 
             try {
