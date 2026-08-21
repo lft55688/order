@@ -301,26 +301,26 @@
 
             // 建立 PDF 繪製容器
             const pdfContainer = document.createElement('div');
-            pdfContainer.style.padding = '20px';
+            pdfContainer.style.padding = '10px 20px 20px';
             pdfContainer.style.fontFamily = 'sans-serif';
             pdfContainer.style.color = '#1e293b';
             pdfContainer.style.backgroundColor = '#ffffff';
 
             let contentHtml = `
-                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
+                <div style="text-align: center; margin-bottom: 8px; border-bottom: 2px solid #4f46e5; padding-bottom: 6px;">
                     <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房餐點彙總統計單</h1>
-                    <p style="font-size: 12px; color: #64748b; margin-top: 5px;">
+                    <p style="font-size: 12px; color: #64748b; margin-top: 2px;">
                         匯出時間：${new Date().toLocaleString()} | 餐點總份數：<b>${grandTotalPortions}</b> 份 | 總額：<b>$${grandTotalAmount}</b>
                     </p>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
             `;
 
             Object.keys(itemMap).forEach(itemName => {
                 const data = itemMap[itemName];
 
                 contentHtml += `
-                    <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff;">
+                    <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
                                 <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
@@ -375,6 +375,8 @@
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+				// 💡 新增這行：遇到設有 page-break-inside: avoid 的元素時自動整塊換頁
+				pagebreak: { mode: ['avoid-all', 'css'] }
             };
 
             try {
