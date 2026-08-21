@@ -32,11 +32,11 @@
         
         <!-- 區塊 1: 菜單管理 -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">1. 菜單管理 (上傳與 AI 辨識)</h2>
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">1. 菜單管理 (上傳交給後端 AI 辨識)</h2>
             <div class="flex items-center justify-center w-full">
                 <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
                     <div class="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
-                        <p class="mb-2 text-sm font-semibold">點擊上傳菜單圖片</p>
+                        <p class="mb-2 text-sm font-semibold">點擊上傳菜單圖片 (建議 2MB 內)</p>
                     </div>
                     <input type="file" accept="image/*" class="hidden" onchange="handleImageUpload(event)" />
                 </label>
@@ -44,7 +44,7 @@
             <div id="preview-container" class="hidden mt-6 text-center">
                 <img id="image-preview" class="max-w-full h-auto max-h-48 rounded-lg border border-slate-200 shadow-sm mx-auto mb-4" />
                 <button id="analyze-btn" onclick="analyzeImage()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium">
-                    <span id="analyze-text">交給 AI 辨識</span>
+                    <span id="analyze-text">傳送至後端 AI 辨識</span>
                     <div id="analyze-spinner" class="spinner hidden"></div>
                 </button>
             </div>
@@ -75,9 +75,8 @@
     </main>
 
     <script>
-        // ⚠️ 請填入您的 API Key 與 Google Apps Script URL
-        const GEMINI_API_KEY = "AQ.Ab8RN6JRYGgSCTVLJJa-OwpaIoxzgzLhXQZHpB9RMqQgeheZ_g"; // 相容 AQ. 與 AIza 開頭的金鑰
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbylSbLzr0dgEYS9YUNPYM2fQKLQDsFSmAepKf_WpkOqMNi48P37SVChNNOsyMFP7lySHg/exec"; 
+        // ⚠️ 只要填這一個：將你新部署好的 GAS URL 貼上來
+        const GAS_URL = "YOUR_GAS_WEB_APP_URL_HERE"; 
 
         let base64Image = "";
         let imageMimeType = "image/jpeg"; 
@@ -88,58 +87,54 @@
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+            
+            // 提醒：GAS 傳遞大檔案較慢，建議不要超過 5MB
+            if (file.size > 5 * 1024 * 1024) {
+                alert("圖片檔案過大，請選擇 5MB 以下的圖片以加速傳輸。");
+            }
+
             imageMimeType = file.type || "image/jpeg";
             const reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('image-preview').src = e.target.result;
                 document.getElementById('preview-container').classList.remove('hidden');
+                // 取出純 base64 碼
                 base64Image = e.target.result.split(',')[1];
             };
             reader.readAsDataURL(file);
         }
 
-        // 呼叫 Gemini AI
+        // 把圖片交給 GAS，讓 GAS 呼叫 Gemini AI (解決 GitHub 擋 API Key 的問題)
         async function analyzeImage() {
-            if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_")) return alert("請設定 GEMINI_API_KEY！");
+            if (!base64Image) return alert("請先上傳圖片！");
+            if (!GAS_URL || GAS_URL.includes("YOUR_")) return alert("請先設定 GAS_URL！");
+
             const btn = document.getElementById('analyze-btn'), text = document.getElementById('analyze-text'), spinner = document.getElementById('analyze-spinner');
-            btn.disabled = true; text.innerText = "辨識中..."; spinner.classList.remove('hidden');
+            btn.disabled = true; text.innerText = "後端 AI 努力辨識中..."; spinner.classList.remove('hidden');
 
             try {
-                // 1. 修正為標準 gemini-2.5-flash 模型名稱
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-                
-                const response = await fetch(url, {
+                const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'x-goog-api-key': GEMINI_API_KEY // 2. 補上 x-goog-api-key 確保 AQ. 開頭金鑰能正確授權
-                    },
                     body: JSON.stringify({
-                        contents: [{ parts: [
-                            { text: `Extract menu items and prices. Return ONLY a valid JSON array: [{"category": "Name", "items": [{"name": "Item", "price": 150}]}]` },
-                            { inline_data: { mime_type: imageMimeType, data: base64Image } }
-                        ]}],
-                        generationConfig: { temperature: 0.1 }
+                        action: 'analyzeImage',
+                        base64Image: base64Image,
+                        mimeType: imageMimeType
                     })
                 });
-
-                const data = await response.json();
-
-                // 3. 加入完整防錯驗證
-                if (!response.ok || data.error) {
-                    throw new Error(data.error ? data.error.message : `HTTP 請求失敗 (${response.status})`);
+                
+                const result = await response.json();
+                
+                if (result.status === 'error') {
+                    throw new Error(result.message);
                 }
-
-                if (!data.candidates || data.candidates.length === 0) {
-                    throw new Error("AI 未能產生有效結果，請確認菜單圖片是否清晰。");
-                }
-
-                let rawText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
-                parsedMenuData = JSON.parse(rawText);
+                
+                // 取得後端傳回來的解析結果
+                parsedMenuData = result.data;
                 
                 renderEditorForm();
                 document.getElementById('editor-container').classList.remove('hidden');
             } catch (e) {
+                console.error(e);
                 alert("辨識失敗：" + e.message);
             } finally {
                 btn.disabled = false; text.innerText = "重新辨識"; spinner.classList.add('hidden');
