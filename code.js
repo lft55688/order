@@ -109,6 +109,17 @@ function doPost(e) {
       var order = payload.data;
       orderSheet.appendRow([order.id, order.customerName, JSON.stringify(order.items), order.total, order.status, order.time]);
     }
+    // 清除所有訂單
+    else if (action === 'clearOrders') {
+      var orderSheet = sheet.getSheetByName("Orders");
+      if (orderSheet) {
+        var lastRow = orderSheet.getLastRow();
+        if (lastRow > 1) {
+          // 刪除第2行開始到最後一行的資料 (保留第1行標題)
+          orderSheet.deleteRows(2, lastRow - 1);
+        }
+      }
+    }
 
   } catch (error) {
     response = { status: "error", message: error.toString() };
