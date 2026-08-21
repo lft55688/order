@@ -247,22 +247,63 @@
 				`;
 			}
 		}
-		// 匯出 PDF
-		function exportToPDF() {
-			const element = document.getElementById('orders-grid');
-			if(orders.length === 0) return alert("目前沒有訂單可以匯出！");
-			
-			// 設定 PDF 參數
-			const opt = {
-				margin: 0.5,
-				filename: `廚房備餐單_${new Date().toLocaleDateString()}.pdf`,
-				image: { type: 'jpeg', quality: 0.98 },
-				html2canvas: { scale: 2 },
-				jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-			};
-			// 呼叫 html2pdf
-			html2pdf().set(opt).from(element).save();
-		}
+		// 匯出 PDF (修正 Tailwind CSS 不相容導致空白問題)
+        async function exportToPDF() {
+            if (!orders || orders.length === 0) return alert("目前沒有訂單可以匯出！");
+
+            // 1. 建立專門轉成 PDF 的臨時乾淨容器 (使用純 CSS 樣式)
+            const pdfContainer = document.createElement('div');
+            pdfContainer.style.padding = '20px';
+            pdfContainer.style.fontFamily = 'sans-serif';
+            pdfContainer.style.color = '#1e293b';
+            pdfContainer.style.backgroundColor = '#ffffff';
+
+            // 2. 組合 PDF 頁面標題與訂單內容
+            let contentHtml = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房備餐單</h1>
+                    <p style="font-size: 12px; color: #64748b; margin-top: 5px;">匯出時間：${new Date().toLocaleString()}</p>
+                </div>
+            `;
+
+            orders.forEach((order, index) => {
+                const itemsText = order.items.map(i => `• ${i.name} x ${i.count || 1}`).join('<br>');
+                contentHtml += `
+                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #ffffff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 8px;">
+                            <span style="font-weight: bold; background: #0f172a; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${order.id || ('#' + (index + 1))}</span>
+                            <span style="font-size: 12px; color: #64748b;">${order.time || ''}</span>
+                        </div>
+                        <div style="font-size: 15px; font-weight: bold; margin-bottom: 6px; color: #0f172a;">顧客/桌號：${order.customerName}</div>
+                        <div style="font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 8px;">${itemsText}</div>
+                        <div style="border-top: 1px dashed #cbd5e1; pt-2; margin-top: 6px; text-align: right; font-weight: bold; color: #4f46e5; font-size: 14px;">
+                            總金額: $${order.total}
+                        </div>
+                    </div>
+                `;
+            });
+
+            pdfContainer.innerHTML = contentHtml;
+            document.body.appendChild(pdfContainer); // 暫時掛載至 DOM 以便截圖
+
+            // 3. 設定 PDF 參數
+            const opt = {
+                margin: 0.4,
+                filename: `廚房備餐單_${new Date().toLocaleDateString()}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            // 4. 執行轉檔並清理臨時元素
+            try {
+                await html2pdf().set(opt).from(pdfContainer).save();
+            } catch (e) {
+                alert("匯出失敗：" + e.message);
+            } finally {
+                document.body.removeChild(pdfContainer); // 清除背景臨時容器
+            }
+        }
 
 		// 呼叫後端清除訂單
 		async function clearOrders() {
