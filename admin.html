@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理者後台 - AI 動態菜單系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
@@ -66,7 +67,11 @@
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold flex items-center gap-2 text-amber-600">2. 即時訂單看板 (自動更新)</h2>
-                <button onclick="fetchOrders()" class="text-sm bg-slate-100 px-3 py-1.5 rounded hover:bg-slate-200">手動重整</button>
+                <div class="flex items-center gap-2">
+				<button onclick="fetchOrders()" class="text-sm bg-slate-100 px-3 py-1.5 rounded hover:bg-slate-200">🔄 重整</button>
+				<button onclick="exportToPDF()" class="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200">📄 匯出 PDF</button>
+				<button onclick="clearOrders()" class="text-sm bg-red-100 text-red-700 px-3 py-1.5 rounded hover:bg-red-200">🗑️ 清除所有訂單</button>
+				</div>
             </div>
             <div id="no-orders" class="text-center py-10 text-slate-400">目前尚無新訂單或載入中...</div>
             <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden"></div>
@@ -189,34 +194,91 @@
         }
 
         function renderAdminOrders() {
-            const noOrders = document.getElementById('no-orders');
-            const ordersGrid = document.getElementById('orders-grid');
-            if (orders.length === 0) {
-                noOrders.classList.remove('hidden'); ordersGrid.classList.add('hidden');
-                return;
-            }
-            noOrders.classList.add('hidden'); ordersGrid.classList.remove('hidden');
-            ordersGrid.innerHTML = '';
+			const noOrders = document.getElementById('no-orders');
+			const ordersGrid = document.getElementById('orders-grid');
+			if (orders.length === 0) {
+				noOrders.classList.remove('hidden'); ordersGrid.classList.add('hidden');
+				return;
+			}
+			noOrders.classList.add('hidden'); ordersGrid.classList.remove('hidden');
+			ordersGrid.innerHTML = '';
 
-            orders.forEach((order) => {
-                const itemsText = order.items.map(i => i.name).join('、');
-                ordersGrid.innerHTML += `
-                    <div class="bg-white border-2 border-indigo-100 p-5 rounded-xl flex flex-col justify-between shadow-sm">
-                        <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-xs font-bold bg-slate-800 text-white px-2 py-1 rounded">${order.id}</span>
-                                <span class="text-sm text-slate-500">${order.time}</span>
-                            </div>
-                            <h3 class="text-lg font-bold mb-1">名稱: ${order.customerName}</h3>
-                            <p class="text-sm text-slate-600 mb-4">${itemsText}</p>
-                        </div>
-                        <div class="pt-3 border-t border-slate-200">
-                            <span class="font-black text-indigo-600">總金額: $${order.total}</span>
-                        </div>
-                    </div>
-                `;
-            });
-        }
+			// 1. 將訂單資料轉換為「以餐點分組」的結構
+			const groupedItems = {};
+			orders.forEach(order => {
+				order.items.forEach(item => {
+					if (!groupedItems[item.name]) {
+						groupedItems[item.name] = { totalQty: 0, customers: [] };
+					}
+					// 這裡兼容舊資料沒有 qty 的情況 (預設1)
+					const itemQty = item.qty || 1; 
+					groupedItems[item.name].totalQty += itemQty;
+					groupedItems[item.name].customers.push({
+						customerName: order.customerName,
+						qty: itemQty,
+						remark: item.remark || '無',
+						time: order.time
+					});
+				});
+			});
+
+			// 2. 渲染畫面 (一格就是一個餐點，裡面列出點餐的顧客)
+			for (const [itemName, data] of Object.entries(groupedItems)) {
+				let customerListHTML = data.customers.map(c => 
+					`<li class="border-b border-slate-100 py-2 text-sm flex justify-between">
+						<div>
+							<span class="font-bold">${c.customerName}</span> 
+							<span class="text-slate-400 text-xs ml-2">${c.time}</span>
+							<br>
+							<span class="text-red-500 text-xs">備註: ${c.remark}</span>
+						</div>
+						<span class="font-bold text-indigo-600">x${c.qty}</span>
+					 </li>`
+				).join('');
+
+				ordersGrid.innerHTML += `
+					<div class="bg-white border-2 border-indigo-100 p-4 rounded-xl shadow-sm">
+						<div class="flex justify-between items-center mb-3 pb-2 border-b border-indigo-200">
+							<h3 class="text-lg font-black text-slate-800">${itemName}</h3>
+							<span class="bg-indigo-600 text-white px-2 py-1 rounded text-sm font-bold">總數: ${data.totalQty}</span>
+						</div>
+						<ul>${customerListHTML}</ul>
+					</div>
+				`;
+			}
+		}
+		// 匯出 PDF
+		function exportToPDF() {
+			const element = document.getElementById('orders-grid');
+			if(orders.length === 0) return alert("目前沒有訂單可以匯出！");
+			
+			// 設定 PDF 參數
+			const opt = {
+				margin: 0.5,
+				filename: `廚房備餐單_${new Date().toLocaleDateString()}.pdf`,
+				image: { type: 'jpeg', quality: 0.98 },
+				html2canvas: { scale: 2 },
+				jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+			};
+			// 呼叫 html2pdf
+			html2pdf().set(opt).from(element).save();
+		}
+
+		// 呼叫後端清除訂單
+		async function clearOrders() {
+			if (!confirm("⚠️ 確定要清除看板上所有的訂單嗎？這將會清空資料庫！")) return;
+			try {
+				await fetch(GAS_URL, {
+					method: 'POST',
+					body: JSON.stringify({ action: 'clearOrders' })
+				});
+				orders = [];
+				renderAdminOrders();
+				alert("訂單已全部清除！");
+			} catch(e) {
+				alert("清除失敗：" + e);
+			}
+		}
 
         // 網頁載入時與每10秒自動更新訂單
         window.onload = fetchOrders;
