@@ -247,18 +247,16 @@
 				`;
 			}
 		}
-		// 匯出 PDF (修正 Tailwind CSS 不相容導致空白問題)
+		// 匯出 PDF (自動精確計算：單價 x 數量)
         async function exportToPDF() {
             if (!orders || orders.length === 0) return alert("目前沒有訂單可以匯出！");
 
-            // 1. 建立專門轉成 PDF 的臨時乾淨容器 (使用純 CSS 樣式)
             const pdfContainer = document.createElement('div');
             pdfContainer.style.padding = '20px';
             pdfContainer.style.fontFamily = 'sans-serif';
             pdfContainer.style.color = '#1e293b';
             pdfContainer.style.backgroundColor = '#ffffff';
 
-            // 2. 組合 PDF 頁面標題與訂單內容
             let contentHtml = `
                 <div style="text-align: center; margin-bottom: 20px;">
                     <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房備餐單</h1>
@@ -267,7 +265,17 @@
             `;
 
             orders.forEach((order, index) => {
-                const itemsText = order.items.map(i => `• ${i.name} x ${i.qty || 1}`).join('<br>');
+                // 1. 動態計算每一筆訂單的【正確總金額】(單價 x 數量)
+                let calculatedTotal = 0;
+                const itemsTextArr = order.items.map(i => {
+                    const qty = i.qty || 1;
+                    const price = Number(i.price) || 0;
+                    calculatedTotal += price * qty; // 累加：單價 x 數量
+                    return `• ${i.name} ( $${price} ) x ${qty}`;
+                });
+
+                const itemsText = itemsTextArr.join('<br>');
+
                 contentHtml += `
                     <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #ffffff;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 8px;">
@@ -276,17 +284,16 @@
                         </div>
                         <div style="font-size: 15px; font-weight: bold; margin-bottom: 6px; color: #0f172a;">顧客/桌號：${order.customerName}</div>
                         <div style="font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 8px;">${itemsText}</div>
-                        <div style="border-top: 1px dashed #cbd5e1; pt-2; margin-top: 6px; text-align: right; font-weight: bold; color: #4f46e5; font-size: 14px;">
-                            總金額: $${order.total}
+                        <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 6px; text-align: right; font-weight: bold; color: #4f46e5; font-size: 14px;">
+                            總金額: $${calculatedTotal}
                         </div>
                     </div>
                 `;
             });
 
             pdfContainer.innerHTML = contentHtml;
-            document.body.appendChild(pdfContainer); // 暫時掛載至 DOM 以便截圖
+            document.body.appendChild(pdfContainer);
 
-            // 3. 設定 PDF 參數
             const opt = {
                 margin: 0.4,
                 filename: `廚房備餐單_${new Date().toLocaleDateString()}.pdf`,
@@ -295,13 +302,12 @@
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
             };
 
-            // 4. 執行轉檔並清理臨時元素
             try {
                 await html2pdf().set(opt).from(pdfContainer).save();
             } catch (e) {
                 alert("匯出失敗：" + e.message);
             } finally {
-                document.body.removeChild(pdfContainer); // 清除背景臨時容器
+                document.body.removeChild(pdfContainer);
             }
         }
 
