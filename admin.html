@@ -374,7 +374,7 @@
                 filename: `廚房餐點統計單_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
 				// 💡 新增這行：遇到設有 page-break-inside: avoid 的元素時自動整塊換頁
 				pagebreak: { mode: ['avoid-all', 'css'] }
             };
