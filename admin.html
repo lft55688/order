@@ -267,7 +267,7 @@
             `;
 
             orders.forEach((order, index) => {
-                const itemsText = order.items.map(i => `• ${i.name} x ${i.count || 1}`).join('<br>');
+                const itemsText = order.items.map(i => `• ${i.name} x ${i.qty || 1}`).join('<br>');
                 contentHtml += `
                     <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #ffffff;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 8px;">
