@@ -247,10 +247,53 @@
 				`;
 			}
 		}
-		// 匯出 PDF (自動精確計算：單價 x 數量)
+// 匯出 PDF (按餐點分類、統計總數與顯示顧客備註)
         async function exportToPDF() {
             if (!orders || orders.length === 0) return alert("目前沒有訂單可以匯出！");
 
+            // 1. 將所有訂單資料改依「餐點名稱」進行歸納與統計
+            const itemMap = {};
+            let grandTotalAmount = 0;
+            let grandTotalQty = 0;
+
+            orders.forEach(order => {
+                const cName = order.customerName || '未知桌號';
+                const cTime = order.time || '';
+                const cNote = order.note || order.notes || '無';
+
+                if (Array.isArray(order.items)) {
+                    order.items.forEach(item => {
+                        const itemName = item.name || '未命名餐點';
+                        const qty = Number(item.qty || 1);
+                        const price = Number(item.price) || 0;
+                        const subtotal = price * qty;
+
+                        if (!itemMap[itemName]) {
+                            itemMap[itemName] = {
+                                totalQty: 0,
+                                totalAmount: 0,
+                                unitPrice: price,
+                                customers: []
+                            };
+                        }
+
+                        itemMap[itemName].totalQty += qty;
+                        itemMap[itemName].totalAmount += subtotal;
+                        itemMap[itemName].customers.push({
+                            customerName: cName,
+                            time: cTime,
+                            qty: qty,
+                            subtotal: subtotal,
+                            note: cNote
+                        });
+
+                        grandTotalQty += qty;
+                        grandTotalAmount += subtotal;
+                    });
+                }
+            });
+
+            // 2. 建立 PDF 專用乾淨容器 (完全還原看板風格)
             const pdfContainer = document.createElement('div');
             pdfContainer.style.padding = '20px';
             pdfContainer.style.fontFamily = 'sans-serif';
@@ -258,45 +301,74 @@
             pdfContainer.style.backgroundColor = '#ffffff';
 
             let contentHtml = `
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房備餐單</h1>
-                    <p style="font-size: 12px; color: #64748b; margin-top: 5px;">匯出時間：${new Date().toLocaleString()}</p>
+                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
+                    <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房餐點彙總統計單</h1>
+                    <p style="font-size: 12px; color: #64748b; margin-top: 5px;">
+                        匯出時間：${new Date().toLocaleString()} | 餐點總份數：<b>${grandTotalQty}</b> 份 | 總額：<b>$${grandTotalAmount}</b>
+                    </p>
                 </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
             `;
 
-            orders.forEach((order, index) => {
-                // 1. 動態計算每一筆訂單的【正確總金額】(單價 x 數量)
-                let calculatedTotal = 0;
-                const itemsTextArr = order.items.map(i => {
-                    const qty = i.qty || 1;
-                    const price = Number(i.price) || 0;
-                    calculatedTotal += price * qty; // 累加：單價 x 數量
-                    return `• ${i.name} ( $${price} ) x ${qty}`;
-                });
-
-                const itemsText = itemsTextArr.join('<br>');
+            // 3. 遍歷每個餐點卡片
+            Object.keys(itemMap).forEach(itemName => {
+                const data = itemMap[itemName];
 
                 contentHtml += `
-                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #ffffff;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 8px;">
-                            <span style="font-weight: bold; background: #0f172a; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${order.id || ('#' + (index + 1))}</span>
-                            <span style="font-size: 12px; color: #64748b;">${order.time || ''}</span>
+                    <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff;">
+                        <!-- 餐點標題與總數 Badge -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
+                            <div>
+                                <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
+                                <span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span>
+                            </div>
+                            <div style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 13px; padding: 4px 12px; border-radius: 6px;">
+                                總數 : ${data.totalQty}
+                            </div>
                         </div>
-                        <div style="font-size: 15px; font-weight: bold; margin-bottom: 6px; color: #0f172a;">顧客/桌號：${order.customerName}</div>
-                        <div style="font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 8px;">${itemsText}</div>
-                        <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 6px; text-align: right; font-weight: bold; color: #4f46e5; font-size: 14px;">
-                            總金額: $${calculatedTotal}
+
+                        <!-- 點餐顧客明細列表 -->
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                `;
+
+                data.customers.forEach(c => {
+                    contentHtml += `
+                        <div style="border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${c.customerName}</span>
+                                    <span style="font-size: 11px; color: #94a3b8;">${c.time}</span>
+                                </div>
+                                <div>
+                                    <span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 12px;">x${c.qty}</span>
+                                    <span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 12px; color: #ef4444; margin-top: 2px;">
+                                備註：${c.note}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                contentHtml += `
+                            <div style="text-align: right; font-size: 12px; font-weight: bold; color: #4f46e5; margin-top: 4px;">
+                                小計：$${data.totalAmount}
+                            </div>
                         </div>
                     </div>
                 `;
             });
 
+            contentHtml += `</div>`;
+
             pdfContainer.innerHTML = contentHtml;
             document.body.appendChild(pdfContainer);
 
+            // 4. 設定 PDF 下載參數
             const opt = {
                 margin: 0.4,
-                filename: `廚房備餐單_${new Date().toLocaleDateString()}.pdf`,
+                filename: `廚房餐點統計單_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
