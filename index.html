@@ -125,7 +125,7 @@
             publishedMenuData.forEach(cat => {
                 let html = `<div><h2 class="text-xl font-bold border-l-4 border-indigo-500 pl-3 mb-4">${cat.category}</h2><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
                 cat.items.forEach(item => {
-                    html += `<div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between"><h3 class="font-bold text-lg">${item.name}</h3><p class="text-xl font-black mt-2"><span class="text-sm">NT$</span>${item.price}</p><button onclick="addToCart('${item.name}', ${item.price})" class="mt-4 bg-slate-100 hover:bg-indigo-600 hover:text-white font-medium py-2 rounded-xl transition">加入購物車</button></div>`;
+                    html += `<div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between"><h3 class="font-bold text-lg">${item.name}</h3><p class="text-xl font-black mt-2"><span class="text-sm">NT$</span>${item.price}</p><button onclick="openItemModal('${item.name}', ${item.price})" class="mt-4 bg-slate-100 hover:bg-indigo-600 hover:text-white font-medium py-2 rounded-xl transition">加入購物車</button></div>`;
                 });
                 grid.innerHTML += html + `</div></div>`;
             });
