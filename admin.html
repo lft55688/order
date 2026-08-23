@@ -55,11 +55,10 @@
             <div id="menu-list-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </div>
 
-<!-- 區塊 2: 顧客訂單管理 (退換餐編輯) -->
+        <!-- 區塊 2: 顧客訂單管理 (退換餐編輯) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold flex items-center gap-2 text-indigo-600">2. 顧客訂單管理 (退換餐編輯)</h2>
-                <!-- 💡 更新：加入按鈕群組 (重整 + 清空) -->
                 <div class="flex items-center gap-2">
                     <button onclick="fetchOrders()" class="text-sm bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200 font-bold transition">🔄 重整訂單</button>
                     <button onclick="clearOrders()" class="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 font-bold transition">🗑️ 清空全部訂單</button>
@@ -74,8 +73,7 @@
         <!-- 區塊 3: 廚房看板 -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold flex items-center gap-2 text-amber-600">3. 依餐點分類整理及匯出</h2>
-                <!-- 💡 更新：加入按鈕群組 (重整 + 清空) -->
+                <h2 class="text-xl font-bold flex items-center gap-2 text-amber-600">3. 依顧客訂單分類及匯出</h2>
                 <div class="flex items-center gap-2">
                     <button onclick="fetchOrders()" class="text-sm bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200 font-bold transition">🔄 重整看板</button>
                     <button onclick="clearOrders()" class="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 font-bold transition">🗑️ 清空全部訂單</button>
@@ -168,7 +166,7 @@
     </div>
 
     <script>
-        // ⚠️ 請填入你最新部署的 GAS URL
+        // ⚠️ 請確認你的 GAS_URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbylSbLzr0dgEYS9YUNPYM2fQKLQDsFSmAepKf_WpkOqMNi48P37SVChNNOsyMFP7lySHg/exec"; 
 
         let allMenus = [];
@@ -190,8 +188,8 @@
                 
                 document.getElementById('loading-menus').classList.add('hidden');
                 renderMenuList();
-                renderCustomerOrders(); // 顧客列表
-                renderAdminOrders();    // 廚房看板
+                renderCustomerOrders(); 
+                renderAdminOrders();    
             } catch (e) { console.error(e); }
         }
 
@@ -328,14 +326,12 @@
                 });
                 
                 html += `</tbody></table>
-                    <!-- 💡 新增品項按鈕 -->
                     <button onclick="addMenuItem(${cIndex})" class="w-full py-2 text-sm text-indigo-600 font-bold hover:bg-indigo-100 rounded transition border border-dashed border-indigo-200 bg-indigo-50/50">➕ 新增品項至此分類</button>
                 </div>`;
                 container.innerHTML += html;
             });
         }
 
-        // 💡 處理手動新增品項
         function addMenuItem(cIndex) {
             parsedMenuData[cIndex].items.push({ name: "手動新增餐點", price: 0 });
             renderEditorForm();
@@ -399,7 +395,6 @@
         function openEditOrderModal(orderId) {
             const order = orders.find(o => o.id === orderId);
             if(!order) return;
-            // 💡 深拷貝，以免未按儲存就更動到原始資料
             editingOrderData = JSON.parse(JSON.stringify(order));
             
             document.getElementById('edit-order-info').innerText = `顧客/桌號: ${order.customerName} | 單號: ${order.id}`;
@@ -475,7 +470,7 @@
                 price: price,
                 qty: qty,
                 remark: '後台手動新增',
-                menuName: '退換餐/客製' // 讓看板能歸類
+                menuName: '退換餐/客製' 
             });
             
             document.getElementById('add-new-item-name').value = '';
@@ -485,30 +480,27 @@
         }
 
         async function saveEditedOrder() {
-            // 找出原本訂單在 orders 陣列中的位置
             const targetIndex = orders.findIndex(o => o.id === editingOrderData.id);
             if(targetIndex === -1) return;
 
             if (editingOrderData.items.length === 0) {
-                orders.splice(targetIndex, 1); // 如果沒有餐點了，整筆刪除
+                orders.splice(targetIndex, 1); 
             } else {
-                orders[targetIndex] = editingOrderData; // 覆蓋舊資料
+                orders[targetIndex] = editingOrderData; 
             }
 
             try {
-                // 呼叫後端覆蓋訂單資料庫
                 await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateOrders', data: orders }) });
-                
                 closeEditOrderModal();
-                renderCustomerOrders(); // 重整顧客視角
-                renderAdminOrders();    // 重整廚房視角
+                renderCustomerOrders(); 
+                renderAdminOrders();    
                 alert("✅ 訂單修改成功！");
             } catch(e) {
                 alert("儲存失敗：" + e);
             }
         }
 
-        // ================= 廚房看板管理 (依舊保留) =================
+        // ================= 廚房看板管理 (改版：以顧客為單位分類) =================
         function renderAdminOrders() {
             const noOrders = document.getElementById('no-orders');
             const ordersContainer = document.getElementById('orders-container');
@@ -521,41 +513,69 @@
 
             const groupedByMenu = {};
             orders.forEach(order => {
+                const cName = order.customerName || '未知桌號';
+                const oId = order.id; 
+
                 order.items.forEach(item => {
                     const mName = item.menuName || '未分類餐點 (舊資料)';
-                    const iName = item.name;
-                    const price = item.price || 0;
                     const qty = item.qty || 1;
+                    const price = item.price || 0;
+                    const subtotal = price * qty;
 
-                    if (!groupedByMenu[mName]) groupedByMenu[mName] = {};
-                    if (!groupedByMenu[mName][iName]) groupedByMenu[mName][iName] = { totalQty: 0, price: price, totalAmount: 0, customers: [] };
+                    if (!groupedByMenu[mName]) groupedByMenu[mName] = { totalAmount: 0, customers: {} };
+                    if (!groupedByMenu[mName].customers[oId]) {
+                        groupedByMenu[mName].customers[oId] = {
+                            customerName: cName,
+                            time: order.time,
+                            items: [],
+                            totalAmount: 0
+                        };
+                    }
                     
-                    groupedByMenu[mName][iName].totalQty += qty;
-                    groupedByMenu[mName][iName].totalAmount += (price * qty);
-                    groupedByMenu[mName][iName].customers.push({ customerName: order.customerName, qty: qty, remark: item.remark || '無', time: order.time });
+                    groupedByMenu[mName].customers[oId].items.push({
+                        name: item.name,
+                        qty: qty,
+                        price: price,
+                        subtotal: subtotal,
+                        remark: item.remark || '無'
+                    });
+                    
+                    groupedByMenu[mName].customers[oId].totalAmount += subtotal;
+                    groupedByMenu[mName].totalAmount += subtotal;
                 });
             });
 
-            for (const [menuName, itemsData] of Object.entries(groupedByMenu)) {
-                let itemsHTML = '';
-                for (const [itemName, data] of Object.entries(itemsData)) {
-                    let customerListHTML = data.customers.map(c => 
-                        `<li class="border-b border-slate-100 py-2 text-sm flex justify-between">
-                            <div><span class="font-bold">${c.customerName}</span><span class="text-slate-400 text-xs ml-2">${c.time}</span><br><span class="text-red-500 text-xs font-bold">備註: ${c.remark}</span></div>
-                            <span class="font-bold text-indigo-600">x${c.qty}</span>
-                         </li>`
-                    ).join('');
+            for (const [menuName, menuData] of Object.entries(groupedByMenu)) {
+                let customersHTML = '';
+                
+                for (const [orderId, cData] of Object.entries(menuData.customers)) {
+                    let itemsListHTML = cData.items.map(i => {
+                        let remarkHtml = i.remark !== '無' ? `<br><span class="text-red-500 text-xs font-bold">備註: ${i.remark}</span>` : '';
+                        return `
+                        <li class="border-b border-slate-100 py-2 text-sm flex justify-between">
+                            <div>
+                                <span class="font-bold text-slate-800">${i.name}</span>
+                                <span class="text-xs text-slate-500 ml-1">($${i.price})</span>
+                                ${remarkHtml}
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-indigo-600">x${i.qty}</span>
+                                <div class="text-xs font-bold text-slate-600">$${i.subtotal}</div>
+                            </div>
+                        </li>
+                        `;
+                    }).join('');
 
-                    itemsHTML += `
+                    customersHTML += `
                         <div class="bg-white border-2 border-indigo-100 p-4 rounded-xl shadow-sm">
-                            <div class="flex justify-between items-center mb-1 pb-1 border-b border-slate-100">
-                                <h3 class="text-lg font-black text-slate-800">${itemName}</h3>
-                                <span class="bg-indigo-600 text-white px-2 py-1 rounded text-sm font-bold">總數: ${data.totalQty}</span>
+                            <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+                                <div>
+                                    <h3 class="text-lg font-black text-slate-800">${cData.customerName}</h3>
+                                    <div class="text-xs text-slate-400">${cData.time}</div>
+                                </div>
+                                <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-sm font-bold">小計: $${cData.totalAmount}</span>
                             </div>
-                            <div class="text-xs text-slate-500 font-bold mb-3 flex justify-between">
-                                <span>單價: $${data.price}</span><span class="text-indigo-600">本項總額: $${data.totalAmount}</span>
-                            </div>
-                            <ul>${customerListHTML}</ul>
+                            <ul>${itemsListHTML}</ul>
                         </div>
                     `;
                 }
@@ -563,73 +583,105 @@
                 ordersContainer.innerHTML += `
                     <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                         <div class="flex justify-between items-center mb-4 border-b-2 border-slate-200 pb-3">
-                            <h3 class="text-xl font-black text-indigo-800 border-l-4 border-indigo-500 pl-3">${menuName}</h3>
+                            <div>
+                                <h3 class="text-xl font-black text-indigo-800 border-l-4 border-indigo-500 pl-3">${menuName}</h3>
+                                <div class="text-sm font-bold text-slate-500 mt-1 ml-4">此菜單總額：$${menuData.totalAmount}</div>
+                            </div>
                             <button onclick="exportMenuPDF('${menuName}')" class="text-sm bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 transition">📄 匯出此區 PDF</button>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${itemsHTML}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${customersHTML}</div>
                     </div>
                 `;
             }
         }
 
+        // ================= 各別菜單匯出 PDF 邏輯 =================
         async function exportMenuPDF(targetMenuName) {
-            const itemMap = {}; let grandTotalAmount = 0; let grandTotalPortions = 0; 
+            const customerMap = {}; 
+            let grandTotalAmount = 0; 
+            let totalOrdersCount = 0; 
 
             orders.forEach(order => {
+                let hasItemInMenu = false;
                 const cName = order.customerName || '未知桌號';
                 const cTime = order.time || '';
+                const oId = order.id;
+
                 if (Array.isArray(order.items)) {
                     order.items.forEach(item => {
                         const mName = item.menuName || '未分類餐點 (舊資料)';
                         if (mName !== targetMenuName) return; 
+
+                        hasItemInMenu = true;
+                        if (!customerMap[oId]) {
+                            customerMap[oId] = { customerName: cName, time: cTime, items: [], totalAmount: 0 };
+                        }
+
                         const itemName = item.name || '未命名餐點';
-                        const qty = Number(item.qty || 1); const price = Number(item.price) || 0;
-                        const subtotal = price * qty; const cNote = item.remark || '無';
-                        if (!itemMap[itemName]) itemMap[itemName] = { totalPortions: 0, totalQty: 0, totalAmount: 0, unitPrice: price, customers: [] };
-                        itemMap[itemName].totalPortions += 1; itemMap[itemName].totalQty += qty; itemMap[itemName].totalAmount += subtotal;
-                        itemMap[itemName].customers.push({ customerName: cName, time: cTime, qty: qty, subtotal: subtotal, note: cNote });
-                        grandTotalPortions += 1; grandTotalAmount += subtotal;
+                        const qty = Number(item.qty || 1); 
+                        const price = Number(item.price) || 0;
+                        const subtotal = price * qty; 
+                        const cNote = item.remark || '無';
+                        
+                        customerMap[oId].items.push({ name: itemName, qty: qty, price: price, subtotal: subtotal, note: cNote });
+                        customerMap[oId].totalAmount += subtotal;
+                        grandTotalAmount += subtotal;
                     });
+                    if(hasItemInMenu) totalOrdersCount++;
                 }
             });
 
             let contentHtml = `
                 <div style="width: 100%; max-width: 700px; margin: 0 auto; padding: 10px; font-family: sans-serif; color: #1e293b; background-color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
-                        <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房統計單：${targetMenuName}</h1>
-                        <p style="font-size: 12px; color: #64748b; margin-top: 5px;">匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b></p>
+                        <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">顧客訂單明細：${targetMenuName}</h1>
+                        <p style="font-size: 12px; color: #64748b; margin-top: 5px;">匯出時間：${new Date().toLocaleString()} | 訂單筆數：<b>${totalOrdersCount}</b> 筆 | 總額：<b>$${grandTotalAmount}</b></p>
                     </div>
                     <div>
             `;
 
-            Object.keys(itemMap).forEach(itemName => {
-                const data = itemMap[itemName];
+            Object.keys(customerMap).forEach(orderId => {
+                const cData = customerMap[orderId];
                 contentHtml += `
                         <div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 8px; padding: 12px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
                             <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px; padding-bottom: 8px;">
                                 <tr>
-                                    <td style="text-align: left; vertical-align: middle;"><span style="font-size: 16px; font-weight: bold; color: #0f172a;">${itemName}</span><span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span></td>
-                                    <td style="text-align: right; vertical-align: middle; width: 150px;"><span style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 12px; padding: 4px 10px; border-radius: 4px;">總數 : ${data.totalPortions} 筆 (共 ${data.totalQty} 個)</span></td>
+                                    <td style="text-align: left; vertical-align: middle;">
+                                        <span style="font-size: 16px; font-weight: bold; color: #0f172a;">${cData.customerName}</span>
+                                        <span style="font-size: 12px; color: #64748b; margin-left: 6px;">(${cData.time})</span>
+                                    </td>
+                                    <td style="text-align: right; vertical-align: middle; width: 150px;">
+                                        <span style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 12px; padding: 4px 10px; border-radius: 4px;">小計 : $${cData.totalAmount}</span>
+                                    </td>
                                 </tr>
                             </table>
                             <table style="width: 100%; border-collapse: collapse;">
                 `;
-                data.customers.forEach(c => {
-                    const noteColor = c.note !== '無' ? '#dc2626' : '#94a3b8';
-                    const noteWeight = c.note !== '無' ? 'bold' : 'normal';
+                cData.items.forEach(item => {
+                    const noteColor = item.note !== '無' ? '#dc2626' : '#94a3b8';
+                    const noteWeight = item.note !== '無' ? 'bold' : 'normal';
                     contentHtml += `
                                 <tr>
-                                    <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: left;"><div style="margin-bottom: 2px;"><span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${c.customerName}</span><span style="font-size: 11px; color: #94a3b8;">${c.time}</span></div><div style="font-size: 12px; color: ${noteColor}; font-weight: ${noteWeight};">備註：${c.note}</div></td>
-                                    <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: right; vertical-align: top; width: 100px;"><span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 10px;">x${c.qty}</span><span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span></td>
+                                    <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: left;">
+                                        <div style="margin-bottom: 2px;">
+                                            <span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${item.name}</span>
+                                            <span style="font-size: 11px; color: #64748b;">(@$${item.price})</span>
+                                        </div>
+                                        <div style="font-size: 12px; color: ${noteColor}; font-weight: ${noteWeight};">備註：${item.note}</div>
+                                    </td>
+                                    <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: right; vertical-align: top; width: 100px;">
+                                        <span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 10px;">x${item.qty}</span>
+                                        <span style="font-size: 13px; font-weight: bold; color: #334155;">$${item.subtotal}</span>
+                                    </td>
                                 </tr>
                     `;
                 });
-                contentHtml += `</table><div style="text-align: right; font-size: 12px; font-weight: bold; color: #4f46e5; margin-top: 8px;">小計：$${data.totalAmount}</div></div>`;
+                contentHtml += `</table></div>`;
             });
             contentHtml += `</div></div>`;
 
             const opt = {
-                margin: 0.3, filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
+                margin: 0.3, filename: `顧客訂單明細_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
