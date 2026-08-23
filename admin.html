@@ -409,131 +409,109 @@
         }
 
 // ================= 各別菜單匯出 PDF 邏輯 =================
-		async function exportMenuPDF(targetMenuName) {
-			const itemMap = {};
-			let grandTotalAmount = 0; 
-			let grandTotalPortions = 0; 
+        async function exportMenuPDF(targetMenuName) {
+            const itemMap = {};
+            let grandTotalAmount = 0; 
+            let grandTotalPortions = 0; 
 
-			// 1. 只過濾並統計「目標菜單」的資料
-			orders.forEach(order => {
-				const cName = order.customerName || '未知桌號';
-				const cTime = order.time || '';
+            // 1. 只過濾並統計「目標菜單」的資料
+            orders.forEach(order => {
+                const cName = order.customerName || '未知桌號';
+                const cTime = order.time || '';
 
-				if (Array.isArray(order.items)) {
-					order.items.forEach(item => {
-						const mName = item.menuName || '未分類餐點 (舊資料)';
-						if (mName !== targetMenuName) return; 
+                if (Array.isArray(order.items)) {
+                    order.items.forEach(item => {
+                        const mName = item.menuName || '未分類餐點 (舊資料)';
+                        if (mName !== targetMenuName) return; 
 
-						const itemName = item.name || '未命名餐點';
-						const qty = Number(item.qty || 1);
-						const price = Number(item.price) || 0;
-						const subtotal = price * qty;
-						const cNote = item.remark || '無';
+                        const itemName = item.name || '未命名餐點';
+                        const qty = Number(item.qty || 1);
+                        const price = Number(item.price) || 0;
+                        const subtotal = price * qty;
+                        const cNote = item.remark || '無';
 
-						if (!itemMap[itemName]) {
-							itemMap[itemName] = { totalPortions: 0, totalQty: 0, totalAmount: 0, unitPrice: price, customers: [] };
-						}
-						itemMap[itemName].totalPortions += 1;
-						itemMap[itemName].totalQty += qty;
-						itemMap[itemName].totalAmount += subtotal;
-						itemMap[itemName].customers.push({ customerName: cName, time: cTime, qty: qty, subtotal: subtotal, note: cNote });
+                        if (!itemMap[itemName]) {
+                            itemMap[itemName] = { totalPortions: 0, totalQty: 0, totalAmount: 0, unitPrice: price, customers: [] };
+                        }
+                        itemMap[itemName].totalPortions += 1;
+                        itemMap[itemName].totalQty += qty;
+                        itemMap[itemName].totalAmount += subtotal;
+                        itemMap[itemName].customers.push({ customerName: cName, time: cTime, qty: qty, subtotal: subtotal, note: cNote });
 
-						grandTotalPortions += 1;
-						grandTotalAmount += subtotal;
-					});
-				}
-			});
+                        grandTotalPortions += 1;
+                        grandTotalAmount += subtotal;
+                    });
+                }
+            });
 
-			// 💡 防錯 1：若該菜單無任何對應餐點資料，跳出提示並中斷，避免產出空白檔
-			if (Object.keys(itemMap).length === 0) {
-				alert("⚠️ 此菜單目前沒有任何可匯出的訂單資料！");
-				return;
-			}
+            // 2. 組裝純 HTML 字串 (使用純 Inline CSS，避免切斷卡片)
+            // 💡 關鍵：我們直接在最外層設定寬度 800px，並加上白底，讓 PDF 比例固定
+            let contentHtml = `
+                <div style="width: 800px; padding: 30px; font-family: sans-serif; color: #1e293b; background-color: #ffffff;">
+                    <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
+                        <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房統計單：${targetMenuName}</h1>
+                        <p style="font-size: 12px; color: #64748b; margin-top: 5px;">
+                            匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b>
+                        </p>
+                    </div>
+                    <div style="display: block;">
+            `;
 
-			// 2. 產出 PDF 專用 HTML 結構
-			const pdfContainer = document.createElement('div');
-			
-			// 實體掛載於頁面最上方，設定明確尺寸與高圖層
-			pdfContainer.style.position = 'absolute';
-			pdfContainer.style.top = '0';
-			pdfContainer.style.left = '0';
-			pdfContainer.style.width = '750px'; 
-			pdfContainer.style.backgroundColor = '#ffffff';
-			pdfContainer.style.padding = '20px';
-			pdfContainer.style.boxSizing = 'border-box';
-			pdfContainer.style.zIndex = '99999';
+            Object.keys(itemMap).forEach(itemName => {
+                const data = itemMap[itemName];
+                contentHtml += `
+                        <div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
+                                <div>
+                                    <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
+                                    <span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span>
+                                </div>
+                                <div style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 13px; padding: 4px 12px; border-radius: 6px;">
+                                    總數 : ${data.totalPortions} 筆 (共 ${data.totalQty} 個)
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                `;
+                data.customers.forEach(c => {
+                    contentHtml += `
+                                <div style="border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${c.customerName}</span>
+                                            <span style="font-size: 11px; color: #94a3b8;">${c.time}</span>
+                                        </div>
+                                        <div>
+                                            <span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 12px;">x${c.qty}</span>
+                                            <span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 12px; color: ${c.note !== '無' ? '#dc2626' : '#94a3b8'}; margin-top: 3px; font-weight: ${c.note !== '無' ? 'bold' : 'normal'};">
+                                        備註：${c.note}
+                                    </div>
+                                </div>
+                    `;
+                });
+                contentHtml += `<div style="text-align: right; font-size: 12px; font-weight: bold; color: #4f46e5; margin-top: 4px;">小計：$${data.totalAmount}</div></div></div>`;
+            });
+            contentHtml += `</div></div>`; // 閉合容器
 
-			let contentHtml = `
-				<div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px; background: #ffffff;">
-					<h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房統計單：${targetMenuName}</h1>
-					<p style="font-size: 12px; color: #64748b; margin-top: 5px;">
-						匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b>
-					</p>
-				</div>
-				<div style="display: block;">
-			`;
+            const opt = {
+                margin: 0.4, 
+                filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css'] }
+            };
 
-			Object.keys(itemMap).forEach(itemName => {
-				const data = itemMap[itemName];
-				contentHtml += `
-					<div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
-						<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
-							<div>
-								<span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
-								<span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span>
-							</div>
-							<div style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 13px; padding: 4px 12px; border-radius: 6px;">
-								總數 : ${data.totalPortions} 筆 (共 ${data.totalQty} 個)
-							</div>
-						</div>
-						<div style="display: flex; flex-direction: column; gap: 8px;">
-				`;
-				data.customers.forEach(c => {
-					contentHtml += `
-						<div style="border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px;">
-							<div style="display: flex; justify-content: space-between; align-items: center;">
-								<div><span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${c.customerName}</span><span style="font-size: 11px; color: #94a3b8;">${c.time}</span></div>
-								<div><span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 12px;">x${c.qty}</span><span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span></div>
-							</div>
-							<div style="font-size: 12px; color: ${c.note !== '無' ? '#dc2626' : '#94a3b8'}; margin-top: 3px; font-weight: ${c.note !== '無' ? 'bold' : 'normal'};">備註：${c.note}</div>
-						</div>
-					`;
-				});
-				contentHtml += `<div style="text-align: right; font-size: 12px; font-weight: bold; color: #4f46e5; margin-top: 4px;">小計：$${data.totalAmount}</div></div></div>`;
-			});
-			contentHtml += `</div>`;
-			pdfContainer.innerHTML = contentHtml;
-			document.body.appendChild(pdfContainer);
-
-			// 💡 防錯 2：強制置頂滾動條，解決因向下滾動導致截圖位移出空白頁的問題
-			window.scrollTo(0, 0);
-
-			// 💡 防錯 3：延遲 300ms 讓瀏覽器確定完成 DOM 的渲染繪製 (Paint)
-			await new Promise(resolve => setTimeout(resolve, 300));
-
-			const opt = {
-				margin: 0.4, 
-				filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
-				image: { type: 'jpeg', quality: 0.98 },
-				html2canvas: { 
-					scale: 2, 
-					useCORS: true, 
-					logging: false,
-					scrollY: 0,
-					scrollX: 0
-				},
-				jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
-				pagebreak: { mode: ['avoid-all', 'css'] }
-			};
-
-			try {
-				await html2pdf().set(opt).from(pdfContainer).save();
-			} catch (e) { 
-				alert("匯出失敗：" + e.message); 
-			} finally { 
-				document.body.removeChild(pdfContainer); 
-			}
-		}
+            try {
+                // 💡 關鍵修正：將 HTML 字串直接傳遞給 html2pdf
+                // 不去觸碰 DOM，它會在背景自動建立一個乾淨的隱藏環境進行渲染
+                await html2pdf().set(opt).from(contentHtml).save();
+            } catch (e) { 
+                alert("匯出失敗：" + e.message); 
+            }
+        }
         async function clearOrders() {
             if (!confirm("⚠️ 確定要清空資料庫中所有的訂單嗎？")) return;
             try {
