@@ -444,72 +444,93 @@
                 }
             });
 
-            // 2. 組裝純 HTML 字串 (使用純 Inline CSS，避免切斷卡片)
-            // 💡 關鍵：我們直接在最外層設定寬度 800px，並加上白底，讓 PDF 比例固定
+            // 2. 💡 修正 1：改用 100% 寬度與 <table> 排版，徹底避免右側被裁切的問題
             let contentHtml = `
-                <div style="width: 800px; padding: 30px; font-family: sans-serif; color: #1e293b; background-color: #ffffff;">
+                <div style="width: 100%; max-width: 700px; margin: 0 auto; padding: 10px; font-family: sans-serif; color: #1e293b; background-color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
                         <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房統計單：${targetMenuName}</h1>
                         <p style="font-size: 12px; color: #64748b; margin-top: 5px;">
                             匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b>
                         </p>
                     </div>
-                    <div style="display: block;">
+                    <div>
             `;
 
             Object.keys(itemMap).forEach(itemName => {
                 const data = itemMap[itemName];
                 contentHtml += `
-                        <div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
-                                <div>
-                                    <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
-                                    <span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span>
-                                </div>
-                                <div style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 13px; padding: 4px 12px; border-radius: 6px;">
-                                    總數 : ${data.totalPortions} 筆 (共 ${data.totalQty} 個)
-                                </div>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 8px; padding: 12px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
+                            
+                            <!-- 餐點標題區 (使用 Table 排版絕對不會跑版) -->
+                            <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px; padding-bottom: 8px;">
+                                <tr>
+                                    <td style="text-align: left; vertical-align: middle;">
+                                        <span style="font-size: 16px; font-weight: bold; color: #0f172a;">${itemName}</span>
+                                        <span style="font-size: 12px; color: #64748b; margin-left: 6px;">(單價 $${data.unitPrice})</span>
+                                    </td>
+                                    <td style="text-align: right; vertical-align: middle; width: 150px;">
+                                        <span style="background: #4338ca; color: #ffffff; font-weight: bold; font-size: 12px; padding: 4px 10px; border-radius: 4px;">
+                                            總數 : ${data.totalPortions} 筆 (共 ${data.totalQty} 個)
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- 顧客列表區 (使用 Table 排版) -->
+                            <table style="width: 100%; border-collapse: collapse;">
                 `;
                 data.customers.forEach(c => {
+                    const noteColor = c.note !== '無' ? '#dc2626' : '#94a3b8';
+                    const noteWeight = c.note !== '無' ? 'bold' : 'normal';
                     contentHtml += `
-                                <div style="border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
+                                <tr>
+                                    <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: left;">
+                                        <div style="margin-bottom: 2px;">
                                             <span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${c.customerName}</span>
                                             <span style="font-size: 11px; color: #94a3b8;">${c.time}</span>
                                         </div>
-                                        <div>
-                                            <span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 12px;">x${c.qty}</span>
-                                            <span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span>
+                                        <div style="font-size: 12px; color: ${noteColor}; font-weight: ${noteWeight};">
+                                            備註：${c.note}
                                         </div>
-                                    </div>
-                                    <div style="font-size: 12px; color: ${c.note !== '無' ? '#dc2626' : '#94a3b8'}; margin-top: 3px; font-weight: ${c.note !== '無' ? 'bold' : 'normal'};">
-                                        備註：${c.note}
-                                    </div>
-                                </div>
+                                    </td>
+                                    <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: right; vertical-align: top; width: 100px;">
+                                        <span style="font-weight: bold; color: #4338ca; font-size: 14px; margin-right: 10px;">x${c.qty}</span>
+                                        <span style="font-size: 13px; font-weight: bold; color: #334155;">$${c.subtotal}</span>
+                                    </td>
+                                </tr>
                     `;
                 });
-                contentHtml += `<div style="text-align: right; font-size: 12px; font-weight: bold; color: #4f46e5; margin-top: 4px;">小計：$${data.totalAmount}</div></div></div>`;
+                contentHtml += `
+                            </table>
+                            <div style="text-align: right; font-size: 12px; font-weight: bold; color: #4f46e5; margin-top: 8px;">
+                                小計：$${data.totalAmount}
+                            </div>
+                        </div>
+                `;
             });
-            contentHtml += `</div></div>`; // 閉合容器
+            contentHtml += `</div></div>`;
 
             const opt = {
-                margin: 0.4, 
+                margin: 0.3, 
                 filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
+                html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
                 pagebreak: { mode: ['avoid-all', 'css'] }
             };
 
+            // 💡 修正 2：強制將網頁捲動到最上方再匯出，徹底解決截圖位置偏移產生大面積空白的問題！
+            const currentScrollY = window.scrollY;
+            window.scrollTo(0, 0);
+
             try {
-                // 💡 關鍵修正：將 HTML 字串直接傳遞給 html2pdf
-                // 不去觸碰 DOM，它會在背景自動建立一個乾淨的隱藏環境進行渲染
+                // 直接傳入 HTML 字串，讓它在背景安全渲染，不再掛載到畫面上干擾
                 await html2pdf().set(opt).from(contentHtml).save();
             } catch (e) { 
                 alert("匯出失敗：" + e.message); 
+            } finally {
+                // 匯出完成後，瞬間把畫面捲回使用者原本的位置，視覺上完全無感
+                window.scrollTo(0, currentScrollY);
             }
         }
         async function clearOrders() {
