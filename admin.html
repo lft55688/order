@@ -155,29 +155,34 @@
             } catch(e) {}
         }
 
-        function renderMenuList() {
+		function renderMenuList() {
             const noMenus = document.getElementById('no-menus');
             const grid = document.getElementById('menu-list-grid');
             
             if (allMenus.length === 0) {
-                noMenus.classList.remove('hidden'); grid.innerHTML = '';
+                noMenus.classList.remove('hidden');
+                grid.innerHTML = '';
                 return;
             }
+            
             noMenus.classList.add('hidden');
             grid.innerHTML = allMenus.map(menu => `
                 <div class="bg-white p-5 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
                     <div class="flex justify-between items-start mb-4">
                         <h3 class="font-bold text-lg text-slate-800">${menu.name}</h3>
                         <div class="flex gap-2">
-                            <button onclick="openMenuEditor('${menu.id}')" class="bg-slate-100 px-3 py-1.5 rounded hover:bg-slate-200 text-sm font-bold">編輯</button>
+                            <button onclick="openMenuEditor('${menu.id}')" class="bg-slate-100 px-3 py-1.5 rounded hover:bg-slate-200 text-sm font-bold text-slate-600">編輯</button>
                             <button onclick="deleteMenu('${menu.id}')" class="bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 text-sm font-bold">刪除</button>
                         </div>
                     </div>
+                    
                     <div class="flex justify-between items-center border-t border-slate-100 pt-3 mt-2">
                         <span class="text-sm text-slate-500">包含 ${menu.data.length} 個分類</span>
-                        <div class="flex items-center gap-2 cursor-pointer" onclick="togglePublish('${menu.id}', event)">
+                        
+                        <!-- 💡 修正：直接把 onclick 提到最外層 div，讓點擊開關任何一個角落都能完美觸發 -->
+                        <div class="flex items-center gap-2 cursor-pointer select-none" onclick="togglePublish('${menu.id}')">
                             <span class="text-sm font-bold ${menu.isPublished ? 'text-emerald-600' : 'text-slate-400'}">${menu.isPublished ? '上架中' : '未發布'}</span>
-                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none pointer-events-none">
                                 <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" ${menu.isPublished ? 'checked' : ''}/>
                                 <label class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
                             </div>
@@ -187,13 +192,22 @@
             `).join('');
         }
 
-        async function togglePublish(id, event) {
-            if(event.target.tagName.toLowerCase() === 'input') return;
+		async function togglePublish(id, event) {
+            // 💡 直接阻止事件冒泡，並精準抓取該菜單物件進行狀態反轉
             const menu = allMenus.find(m => m.id === id);
             if(menu) {
                 menu.isPublished = !menu.isPublished;
-                renderMenuList();
-                try { await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMenu', data: allMenus }) }); } catch(e) {}
+                renderMenuList(); // 先更新畫面
+                
+                // 背景同步到資料庫
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'updateMenu', data: allMenus })
+                    });
+                } catch(e) {
+                    alert("更新狀態失敗");
+                }
             }
         }
 
@@ -394,7 +408,7 @@
             }
         }
 
-        // ================= 各別菜單匯出 PDF 邏輯 =================
+// ================= 各別菜單匯出 PDF 邏輯 =================
         async function exportMenuPDF(targetMenuName) {
             const itemMap = {};
             let grandTotalAmount = 0; 
@@ -408,7 +422,7 @@
                 if (Array.isArray(order.items)) {
                     order.items.forEach(item => {
                         const mName = item.menuName || '未分類餐點 (舊資料)';
-                        if (mName !== targetMenuName) return; // 💡 略過不屬於此菜單的項目
+                        if (mName !== targetMenuName) return; 
 
                         const itemName = item.name || '未命名餐點';
                         const qty = Number(item.qty || 1);
@@ -432,6 +446,12 @@
 
             // 2. 產出 PDF 專用隱藏 HTML 結構
             const pdfContainer = document.createElement('div');
+            // 💡 修正 1：加上絕對定位與固定寬度，避免被網頁原本的 flex 影響，並鎖死渲染基準點
+            pdfContainer.style.position = 'absolute';
+            pdfContainer.style.top = '0';
+            pdfContainer.style.left = '0';
+            pdfContainer.style.width = '800px'; 
+            pdfContainer.style.zIndex = '-9999';
             pdfContainer.style.padding = '20px'; 
             pdfContainer.style.fontFamily = 'sans-serif'; 
             pdfContainer.style.color = '#1e293b'; 
@@ -444,13 +464,15 @@
                         匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b>
                     </p>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- 💡 修正 2：拿掉 flexbox，改回 block 佈局讓 html2pdf 能正確計算換頁不被切斷 -->
+                <div style="display: block;">
             `;
 
             Object.keys(itemMap).forEach(itemName => {
                 const data = itemMap[itemName];
                 contentHtml += `
-                    <div style="border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
+                    <!-- 💡 修正 3：加入 margin-bottom 取代原本的 flex gap，確保卡片間距正常 -->
+                    <div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
                                 <span style="font-size: 17px; font-weight: bold; color: #0f172a;">${itemName}</span>
@@ -483,7 +505,8 @@
                 margin: 0.4, 
                 filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
+                // 💡 修正 4：強制 scrollY 為 0，解決截圖位置偏移導致大片空白的問題
+                html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
                 pagebreak: { mode: ['avoid-all', 'css'] }
             };
