@@ -10,7 +10,6 @@ function doGet(e) {
       if (menuSheet) {
         var lastRow = menuSheet.getLastRow();
         if (lastRow > 1) {
-          // 讀取 A2:D (ID, Name, isPublished, Data JSON)
           var rawData = menuSheet.getRange(2, 1, lastRow - 1, 4).getValues();
           response.data = rawData.map(function(row) {
             return {
@@ -105,21 +104,17 @@ function doPost(e) {
         response.data = JSON.parse(rawText);
       }
       
-      // 更新菜單 (新邏輯：將每個菜單拆分存在獨立的 Row)
+      // 更新菜單
       else if (action === 'updateMenu') {
         var menuSheet = sheet.getSheetByName("Menu");
         if (!menuSheet) { 
           menuSheet = sheet.insertSheet("Menu"); 
           menuSheet.appendRow(["ID", "Name", "IsPublished", "Data JSON"]);
         }
-        
-        // 1. 清除舊資料 (保留第一行標題)
         var lastRow = menuSheet.getLastRow();
         if (lastRow > 1) {
           menuSheet.getRange(2, 1, lastRow - 1, 4).clearContent();
         }
-        
-        // 2. 寫入新資料 (一行一個菜單)
         var allMenus = payload.data;
         if (allMenus && allMenus.length > 0) {
           var rows = allMenus.map(function(m) {
@@ -129,6 +124,7 @@ function doPost(e) {
         }
       } 
       
+      // 新增單筆訂單
       else if (action === 'addOrder') {
         var orderSheet = sheet.getSheetByName("Orders");
         if (!orderSheet) {
@@ -139,6 +135,30 @@ function doPost(e) {
         orderSheet.appendRow([order.id, order.customerName, JSON.stringify(order.items), order.total, order.status, order.time]);
       }
       
+      // 💡 覆蓋/修改所有訂單 (用於退換餐編輯)
+      else if (action === 'updateOrders') {
+        var orderSheet = sheet.getSheetByName("Orders");
+        if (!orderSheet) {
+          orderSheet = sheet.insertSheet("Orders");
+          orderSheet.appendRow(["ID", "Customer Name", "Items JSON", "Total", "Status", "Time"]);
+        }
+        var lastRow = orderSheet.getLastRow();
+        if (lastRow > 1) {
+          orderSheet.deleteRows(2, lastRow - 1); // 刪除舊資料
+        }
+        
+        var allOrders = payload.data;
+        // 注意：前端傳來的是反轉過(最新的在前面)的，為了保持資料庫「最新的在最下面」，我們再次反轉寫入
+        var reversedOrders = allOrders.slice().reverse(); 
+        if (reversedOrders && reversedOrders.length > 0) {
+          var rows = reversedOrders.map(function(o) {
+            return [o.id, o.customerName, JSON.stringify(o.items), o.total, o.status, o.time];
+          });
+          orderSheet.getRange(2, 1, rows.length, 6).setValues(rows);
+        }
+      }
+
+      // 清除所有訂單
       else if (action === 'clearOrders') {
         var orderSheet = sheet.getSheetByName("Orders");
         if (orderSheet) {
