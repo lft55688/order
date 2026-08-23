@@ -55,11 +55,15 @@
             <div id="menu-list-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </div>
 
-        <!-- 區塊 2: 顧客訂單管理 (新功能：退換餐編輯) -->
+<!-- 區塊 2: 顧客訂單管理 (退換餐編輯) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold flex items-center gap-2 text-indigo-600">2. 顧客訂單管理 (退換餐編輯)</h2>
-                <button onclick="fetchOrders()" class="text-sm bg-slate-100 px-3 py-1.5 rounded hover:bg-slate-200 font-bold">🔄 重整訂單</button>
+                <!-- 💡 更新：加入按鈕群組 (重整 + 清空) -->
+                <div class="flex items-center gap-2">
+                    <button onclick="fetchOrders()" class="text-sm bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200 font-bold transition">🔄 重整訂單</button>
+                    <button onclick="clearOrders()" class="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 font-bold transition">🗑️ 清空全部訂單</button>
+                </div>
             </div>
             <p class="text-sm text-slate-500 mb-4">以顧客為單位的訂單列表，若顧客需要換餐或退單，請點擊編輯修改。</p>
             
@@ -71,7 +75,11 @@
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold flex items-center gap-2 text-amber-600">3. 廚房即時看板 (依餐點分類)</h2>
-                <button onclick="clearOrders()" class="text-sm bg-red-100 text-red-700 px-3 py-1.5 rounded hover:bg-red-200 font-bold">🗑️ 清空全部訂單</button>
+                <!-- 💡 更新：加入按鈕群組 (重整 + 清空) -->
+                <div class="flex items-center gap-2">
+                    <button onclick="fetchOrders()" class="text-sm bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200 font-bold transition">🔄 重整看板</button>
+                    <button onclick="clearOrders()" class="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 font-bold transition">🗑️ 清空全部訂單</button>
+                </div>
             </div>
             <div id="no-orders" class="text-center py-10 text-slate-400">目前尚無訂單...</div>
             <div id="orders-container" class="space-y-8 hidden"></div>
