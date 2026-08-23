@@ -444,14 +444,11 @@
                 }
             });
 
-            // 2. 產出 PDF 專用隱藏 HTML 結構
+            // 2. 產出 PDF 專用結構
             const pdfContainer = document.createElement('div');
-            // 💡 修正 1：加上絕對定位與固定寬度，避免被網頁原本的 flex 影響，並鎖死渲染基準點
-            pdfContainer.style.position = 'absolute';
-            pdfContainer.style.top = '0';
-            pdfContainer.style.left = '0';
+            
+            // 💡 修正關鍵：改用固定寬度並暫時將其附加在 body，確保瀏覽器能正常渲染計算高度
             pdfContainer.style.width = '800px'; 
-            pdfContainer.style.zIndex = '-9999';
             pdfContainer.style.padding = '20px'; 
             pdfContainer.style.fontFamily = 'sans-serif'; 
             pdfContainer.style.color = '#1e293b'; 
@@ -464,14 +461,12 @@
                         匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b>
                     </p>
                 </div>
-                <!-- 💡 修正 2：拿掉 flexbox，改回 block 佈局讓 html2pdf 能正確計算換頁不被切斷 -->
                 <div style="display: block;">
             `;
 
             Object.keys(itemMap).forEach(itemName => {
                 const data = itemMap[itemName];
                 contentHtml += `
-                    <!-- 💡 修正 3：加入 margin-bottom 取代原本的 flex gap，確保卡片間距正常 -->
                     <div style="margin-bottom: 15px; border: 1.5px solid #e0e7ff; border-radius: 10px; padding: 14px; background: #ffffff; page-break-inside: avoid; break-inside: avoid;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
@@ -499,13 +494,17 @@
             });
             contentHtml += `</div>`;
             pdfContainer.innerHTML = contentHtml;
+            
+            // 💡 關鍵修正：將容器加入畫面上，但用絕對定位移到畫面之外 (opacity: 0)，這樣 DOM 才能正確計算高度
+            pdfContainer.style.position = 'fixed';
+            pdfContainer.style.left = '-9999px';
+            pdfContainer.style.top = '0';
             document.body.appendChild(pdfContainer);
 
             const opt = {
                 margin: 0.4, 
                 filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                // 💡 修正 4：強制 scrollY 為 0，解決截圖位置偏移導致大片空白的問題
                 html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
                 pagebreak: { mode: ['avoid-all', 'css'] }
@@ -516,6 +515,7 @@
             } catch (e) { 
                 alert("匯出失敗：" + e.message); 
             } finally { 
+                // 💡 確保無論成功或失敗，都會從畫面上清除暫存的 DOM
                 document.body.removeChild(pdfContainer); 
             }
         }
