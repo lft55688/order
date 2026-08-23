@@ -196,7 +196,7 @@
                     </div>
                     
                     <div class="flex justify-between items-center border-t border-slate-100 pt-3 mt-2">
-                        <span class="text-sm text-slate-500">包含 ${menu.data.length} 個分類</span>
+                        <span class="text-sm text-slate-500">包含 ${(menu.data || []).length} 個分類</span>
                         
                         <!-- 發布開關 -->
                         <div class="flex items-center gap-2 cursor-pointer" onclick="togglePublish('${menu.id}', event)">
