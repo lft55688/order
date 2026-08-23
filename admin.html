@@ -37,7 +37,6 @@
         </div>
     </nav>
 
-    <!-- ================= 主控台畫面 ================= -->
     <main id="dashboard-view" class="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8 block">
         
         <!-- 區塊 1: 菜單清單管理 -->
@@ -84,7 +83,7 @@
         </div>
     </main>
 
-    <!-- ================= 菜單編輯器畫面 ================= -->
+    <!-- 菜單編輯器畫面 -->
     <main id="menu-editor-view" class="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6 hidden">
         <div class="flex justify-between items-center">
             <button onclick="closeMenuEditor()" class="text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1">← 返回列表</button>
@@ -130,7 +129,7 @@
         </div>
     </main>
 
-    <!-- ================= 顧客訂單編輯視窗 (Modal) ================= -->
+    <!-- 顧客訂單編輯視窗 (Modal) -->
     <div id="edit-order-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
@@ -148,11 +147,14 @@
                 </div>
 
                 <h4 class="font-bold text-sm text-indigo-500 border-t border-slate-100 pt-4 mb-2">➕ 手動為顧客新增餐點</h4>
-                <div class="flex gap-2 items-center bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                <div class="flex gap-2 items-center bg-indigo-50 p-3 rounded-lg border border-indigo-100 flex-wrap">
+                    <!-- 💡 新增：選擇菜單分類下拉選單 -->
+                    <select id="add-new-item-menu" class="w-full sm:w-auto flex-1 px-2 py-1.5 rounded border border-slate-300 text-sm outline-none font-bold text-slate-600"></select>
+                    
                     <input type="text" id="add-new-item-name" placeholder="餐點名稱" class="flex-1 px-2 py-1.5 rounded border border-slate-300 text-sm outline-none">
                     <input type="number" id="add-new-item-price" placeholder="單價$" class="w-16 px-2 py-1.5 rounded border border-slate-300 text-sm outline-none">
                     <input type="number" id="add-new-item-qty" value="1" min="1" class="w-12 px-2 py-1.5 rounded border border-slate-300 text-sm text-center outline-none">
-                    <button onclick="addCustomItemToOrder()" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded hover:bg-indigo-700 text-sm">加入</button>
+                    <button onclick="addCustomItemToOrder()" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded hover:bg-indigo-700 text-sm w-full sm:w-auto mt-2 sm:mt-0">加入</button>
                 </div>
             </div>
 
@@ -176,7 +178,7 @@
         let base64Image = "";
         let imageMimeType = "image/jpeg"; 
 
-        let editingOrderData = null; // 暫存正在編輯的訂單
+        let editingOrderData = null; 
 
         // ================= 初始與讀取 =================
         async function fetchAllData() {
@@ -402,6 +404,10 @@
             document.getElementById('add-new-item-price').value = '';
             document.getElementById('add-new-item-qty').value = '1';
 
+            // 💡 將目前的菜單列表填入下拉選單中
+            const menuSelect = document.getElementById('add-new-item-menu');
+            menuSelect.innerHTML = allMenus.map(m => `<option value="${m.name}">${m.name}</option>`).join('') + `<option value="未分類餐點">未分類餐點</option>`;
+
             renderEditOrderItems();
             const modal = document.getElementById('edit-order-modal');
             modal.classList.remove('hidden');
@@ -422,17 +428,20 @@
             container.innerHTML = editingOrderData.items.map((item, index) => {
                 const subtotal = item.price * item.qty;
                 total += subtotal;
+                const mName = item.menuName || '未分類餐點';
+
                 return `
-                    <div class="flex items-center gap-3 border-b border-slate-100 pb-2">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-3 mt-2">
                         <div class="flex-1">
+                            <div class="mb-1"><span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded">${mName}</span></div>
                             <div class="font-bold text-slate-800 text-sm">${item.name}</div>
-                            <div class="text-xs text-slate-500">單價: $${item.price} ${item.remark && item.remark !== '無' ? `| 備註: ${item.remark}` : ''}</div>
+                            <div class="text-xs text-slate-500">單價: $${item.price} ${item.remark && item.remark !== '無' ? `| <span class="text-red-500 font-bold">備註: ${item.remark}</span>` : ''}</div>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold text-slate-400">數量:</span>
                             <input type="number" min="0" value="${item.qty}" onchange="updateEditItemQty(${index}, this.value)" class="w-12 h-8 text-center border border-slate-300 rounded font-bold outline-none focus:ring-1 focus:ring-indigo-500">
                         </div>
-                        <div class="w-12 text-right font-bold text-slate-700 text-sm">$${subtotal}</div>
+                        <div class="w-14 text-right font-bold text-slate-700 text-sm">$${subtotal}</div>
                     </div>
                 `;
             }).join('');
@@ -459,6 +468,7 @@
         }
 
         function addCustomItemToOrder() {
+            const selectedMenu = document.getElementById('add-new-item-menu').value;
             const name = document.getElementById('add-new-item-name').value.trim();
             const price = parseInt(document.getElementById('add-new-item-price').value);
             const qty = parseInt(document.getElementById('add-new-item-qty').value);
@@ -470,7 +480,7 @@
                 price: price,
                 qty: qty,
                 remark: '後台手動新增',
-                menuName: '退換餐/客製' 
+                menuName: selectedMenu // 💡 將手動新增的餐點正確歸類到指定菜單
             });
             
             document.getElementById('add-new-item-name').value = '';
@@ -500,7 +510,7 @@
             }
         }
 
-        // ================= 廚房看板管理 (改版：以顧客為單位分類) =================
+        // ================= 廚房看板管理 (以顧客為單位 + 餐點總結統計) =================
         function renderAdminOrders() {
             const noOrders = document.getElementById('no-orders');
             const ordersContainer = document.getElementById('orders-container');
@@ -512,42 +522,48 @@
             ordersContainer.innerHTML = '';
 
             const groupedByMenu = {};
+            
             orders.forEach(order => {
                 const cName = order.customerName || '未知桌號';
                 const oId = order.id; 
 
                 order.items.forEach(item => {
-                    const mName = item.menuName || '未分類餐點 (舊資料)';
+                    const mName = item.menuName || '未分類餐點';
                     const qty = item.qty || 1;
                     const price = item.price || 0;
                     const subtotal = price * qty;
+                    const remark = item.remark || '無';
 
-                    if (!groupedByMenu[mName]) groupedByMenu[mName] = { totalAmount: 0, customers: {} };
-                    if (!groupedByMenu[mName].customers[oId]) {
-                        groupedByMenu[mName].customers[oId] = {
-                            customerName: cName,
-                            time: order.time,
-                            items: [],
-                            totalAmount: 0
-                        };
+                    // 初始化菜單區塊與統計區塊
+                    if (!groupedByMenu[mName]) {
+                        groupedByMenu[mName] = { totalAmount: 0, customers: {}, summary: {} };
                     }
                     
-                    groupedByMenu[mName].customers[oId].items.push({
-                        name: item.name,
-                        qty: qty,
-                        price: price,
-                        subtotal: subtotal,
-                        remark: item.remark || '無'
-                    });
+                    // 初始化顧客區塊
+                    if (!groupedByMenu[mName].customers[oId]) {
+                        groupedByMenu[mName].customers[oId] = { customerName: cName, time: order.time, items: [], totalAmount: 0 };
+                    }
                     
+                    // 寫入顧客明細
+                    groupedByMenu[mName].customers[oId].items.push({ name: item.name, qty: qty, price: price, subtotal: subtotal, remark: remark });
                     groupedByMenu[mName].customers[oId].totalAmount += subtotal;
                     groupedByMenu[mName].totalAmount += subtotal;
+
+                    // 💡 統計總額：依餐點名稱與備註分開計算
+                    if (!groupedByMenu[mName].summary[item.name]) {
+                        groupedByMenu[mName].summary[item.name] = {};
+                    }
+                    if (!groupedByMenu[mName].summary[item.name][remark]) {
+                        groupedByMenu[mName].summary[item.name][remark] = 0;
+                    }
+                    groupedByMenu[mName].summary[item.name][remark] += qty;
                 });
             });
 
             for (const [menuName, menuData] of Object.entries(groupedByMenu)) {
                 let customersHTML = '';
                 
+                // 產生顧客卡片
                 for (const [orderId, cData] of Object.entries(menuData.customers)) {
                     let itemsListHTML = cData.items.map(i => {
                         let remarkHtml = i.remark !== '無' ? `<br><span class="text-red-500 text-xs font-bold">備註: ${i.remark}</span>` : '';
@@ -580,24 +596,55 @@
                     `;
                 }
 
+                // 💡 產生底部餐點總額統計區塊
+                let summaryHTML = `<div class="mt-8 border-t-2 border-slate-200 pt-5">
+                    <h4 class="font-bold text-lg text-slate-700 mb-4">📋 此菜單餐點總量統計 (含備註)</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">`;
+                
+                for (const [itemName, remarksData] of Object.entries(menuData.summary)) {
+                    let remarkListHTML = '';
+                    let totalQty = 0;
+                    for (const [rmk, qty] of Object.entries(remarksData)) {
+                        totalQty += qty;
+                        if (rmk === '無') {
+                            remarkListHTML += `<div class="text-xs flex justify-between text-slate-500 mt-1.5 border-t border-slate-100 pt-1"><span>標準 (無備註)</span><span class="font-bold text-slate-700">x${qty}</span></div>`;
+                        } else {
+                            remarkListHTML += `<div class="text-xs flex justify-between text-red-500 font-bold mt-1.5 border-t border-red-50 pt-1"><span>${rmk}</span><span>x${qty}</span></div>`;
+                        }
+                    }
+                    summaryHTML += `
+                        <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <div class="font-bold text-slate-800 pb-1 mb-1 flex justify-between items-center">
+                                <span class="truncate pr-2" title="${itemName}">${itemName}</span>
+                                <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">總計: ${totalQty}</span>
+                            </div>
+                            ${remarkListHTML}
+                        </div>
+                    `;
+                }
+                summaryHTML += `</div></div>`;
+
+                // 輸出完整區塊
                 ordersContainer.innerHTML += `
                     <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                         <div class="flex justify-between items-center mb-4 border-b-2 border-slate-200 pb-3">
                             <div>
                                 <h3 class="text-xl font-black text-indigo-800 border-l-4 border-indigo-500 pl-3">${menuName}</h3>
-                                <div class="text-sm font-bold text-slate-500 mt-1 ml-4">此菜單總額：$${menuData.totalAmount}</div>
+                                <div class="text-sm font-bold text-slate-500 mt-1 ml-4">此菜單營業總額：$${menuData.totalAmount}</div>
                             </div>
                             <button onclick="exportMenuPDF('${menuName}')" class="text-sm bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 transition">📄 匯出此區 PDF</button>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${customersHTML}</div>
+                        ${summaryHTML}
                     </div>
                 `;
             }
         }
 
-        // ================= 各別菜單匯出 PDF 邏輯 =================
+        // ================= 各別菜單匯出 PDF 邏輯 (包含統計區塊) =================
         async function exportMenuPDF(targetMenuName) {
             const customerMap = {}; 
+            const summaryMap = {}; // 💡 新增 PDF 統計地圖
             let grandTotalAmount = 0; 
             let totalOrdersCount = 0; 
 
@@ -609,7 +656,7 @@
 
                 if (Array.isArray(order.items)) {
                     order.items.forEach(item => {
-                        const mName = item.menuName || '未分類餐點 (舊資料)';
+                        const mName = item.menuName || '未分類餐點';
                         if (mName !== targetMenuName) return; 
 
                         hasItemInMenu = true;
@@ -626,6 +673,11 @@
                         customerMap[oId].items.push({ name: itemName, qty: qty, price: price, subtotal: subtotal, note: cNote });
                         customerMap[oId].totalAmount += subtotal;
                         grandTotalAmount += subtotal;
+
+                        // 統計資料紀錄
+                        if (!summaryMap[itemName]) summaryMap[itemName] = {};
+                        if (!summaryMap[itemName][cNote]) summaryMap[itemName][cNote] = 0;
+                        summaryMap[itemName][cNote] += qty;
                     });
                     if(hasItemInMenu) totalOrdersCount++;
                 }
@@ -640,6 +692,7 @@
                     <div>
             `;
 
+            // 印出顧客明細
             Object.keys(customerMap).forEach(orderId => {
                 const cData = customerMap[orderId];
                 contentHtml += `
@@ -665,7 +718,7 @@
                                     <td style="border-bottom: 1px dashed #f1f5f9; padding: 6px 0; text-align: left;">
                                         <div style="margin-bottom: 2px;">
                                             <span style="font-weight: bold; font-size: 14px; color: #0f172a; margin-right: 8px;">${item.name}</span>
-                                            <span style="font-size: 11px; color: #64748b;">($${item.price})</span>
+                                            <span style="font-size: 11px; color: #64748b;">(@$${item.price})</span>
                                         </div>
                                         <div style="font-size: 12px; color: ${noteColor}; font-weight: ${noteWeight};">備註：${item.note}</div>
                                     </td>
@@ -678,10 +731,47 @@
                 });
                 contentHtml += `</table></div>`;
             });
-            contentHtml += `</div></div>`;
+
+            // 💡 附加底部統計區塊
+            contentHtml += `
+                <div style="margin-top: 30px; border-top: 2px solid #4f46e5; padding-top: 15px; page-break-inside: avoid;">
+                    <h2 style="font-size: 18px; font-weight: bold; color: #4f46e5; margin-bottom: 15px;">📋 餐點總量統計</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+            `;
+
+            Object.keys(summaryMap).forEach((itemName, idx) => {
+                if (idx > 0 && idx % 2 === 0) contentHtml += `</tr><tr>`;
+                
+                let totalQty = 0;
+                let remarkListHTML = '';
+                for (const [rmk, qty] of Object.entries(summaryMap[itemName])) {
+                    totalQty += qty;
+                    if (rmk === '無') {
+                        remarkListHTML += `<div style="font-size: 12px; color: #64748b; margin-top: 4px; border-top: 1px solid #f1f5f9; padding-top: 4px;">標準: x<b>${qty}</b></div>`;
+                    } else {
+                        remarkListHTML += `<div style="font-size: 12px; color: #dc2626; margin-top: 4px; border-top: 1px dashed #fee2e2; padding-top: 4px;">${rmk}: x<b>${qty}</b></div>`;
+                    }
+                }
+
+                contentHtml += `
+                    <td style="width: 50%; padding: 8px; vertical-align: top;">
+                        <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #f8fafc;">
+                            <div style="font-weight: bold; font-size: 15px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                                <span>${itemName}</span>
+                                <span style="color: #4338ca;">總計: ${totalQty}</span>
+                            </div>
+                            ${remarkListHTML}
+                        </div>
+                    </td>
+                `;
+            });
+
+            if (Object.keys(summaryMap).length % 2 !== 0) contentHtml += `<td style="width: 50%; padding: 8px;"></td>`;
+            contentHtml += `</tr></table></div></div></div>`; 
 
             const opt = {
-                margin: 0.3, filename: `顧客訂單明細_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
+                margin: 0.3, filename: `顧客明細與統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
