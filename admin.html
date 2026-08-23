@@ -444,24 +444,27 @@
 				}
 			});
 
+			// 💡 防錯 1：若該菜單無任何對應餐點資料，跳出提示並中斷，避免產出空白檔
+			if (Object.keys(itemMap).length === 0) {
+				alert("⚠️ 此菜單目前沒有任何可匯出的訂單資料！");
+				return;
+			}
+
 			// 2. 產出 PDF 專用 HTML 結構
 			const pdfContainer = document.createElement('div');
 			
-			// 💡 關鍵修復：
-			// 1. 改為 fixed 避免滾動頁面時截圖位置偏移
-			// 2. zIndex 改為 9999 (置頂)，確保 html2canvas 能順利擷取到畫面而不被背景圖層擋住
-			pdfContainer.style.position = 'fixed';
+			// 實體掛載於頁面最上方，設定明確尺寸與高圖層
+			pdfContainer.style.position = 'absolute';
 			pdfContainer.style.top = '0';
 			pdfContainer.style.left = '0';
-			pdfContainer.style.width = '800px'; 
-			pdfContainer.style.zIndex = '9999'; 
-			pdfContainer.style.padding = '20px'; 
-			pdfContainer.style.fontFamily = 'sans-serif'; 
-			pdfContainer.style.color = '#1e293b'; 
+			pdfContainer.style.width = '750px'; 
 			pdfContainer.style.backgroundColor = '#ffffff';
+			pdfContainer.style.padding = '20px';
+			pdfContainer.style.boxSizing = 'border-box';
+			pdfContainer.style.zIndex = '99999';
 
 			let contentHtml = `
-				<div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px;">
+				<div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 12px; background: #ffffff;">
 					<h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #4f46e5;">廚房統計單：${targetMenuName}</h1>
 					<p style="font-size: 12px; color: #64748b; margin-top: 5px;">
 						匯出時間：${new Date().toLocaleString()} | 點餐筆數：<b>${grandTotalPortions}</b> 筆 | 總額：<b>$${grandTotalAmount}</b>
@@ -502,12 +505,23 @@
 			pdfContainer.innerHTML = contentHtml;
 			document.body.appendChild(pdfContainer);
 
+			// 💡 防錯 2：強制置頂滾動條，解決因向下滾動導致截圖位移出空白頁的問題
+			window.scrollTo(0, 0);
+
+			// 💡 防錯 3：延遲 300ms 讓瀏覽器確定完成 DOM 的渲染繪製 (Paint)
+			await new Promise(resolve => setTimeout(resolve, 300));
+
 			const opt = {
 				margin: 0.4, 
 				filename: `廚房統計_${targetMenuName}_${new Date().toLocaleDateString()}.pdf`,
 				image: { type: 'jpeg', quality: 0.98 },
-				// 💡 補上 scrollX: 0, scrollY: 0 確保畫面對齊
-				html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+				html2canvas: { 
+					scale: 2, 
+					useCORS: true, 
+					logging: false,
+					scrollY: 0,
+					scrollX: 0
+				},
 				jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
 				pagebreak: { mode: ['avoid-all', 'css'] }
 			};
@@ -520,7 +534,6 @@
 				document.body.removeChild(pdfContainer); 
 			}
 		}
-
         async function clearOrders() {
             if (!confirm("⚠️ 確定要清空資料庫中所有的訂單嗎？")) return;
             try {
