@@ -298,12 +298,12 @@
                 
                 renderEditorForm();
 
-                // 💡 檢查是否有正確取得圖片網址
+                /* 💡 檢查是否有正確取得圖片網址
                 if (currentImageUrl) {
                     alert("✅ 辨識成功！原始圖片已成功存入雲端。");
                 } else {
                     alert("⚠️ 辨識成功，但圖片存入雲端失敗。\n錯誤原因：" + (result.driveError || "無") + "\n(請確認是否有確實將 GAS 發布為「新版本」)");
-                }
+                }*/
 
             } catch (e) { alert("辨識失敗：" + e.message); } finally {
                 btn.disabled = false; text.innerText = "重新辨識"; spinner.classList.add('hidden');
