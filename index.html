@@ -107,6 +107,7 @@
             try {
                 const res = await fetch(GAS_URL + '?action=getMenu');
                 const result = await res.json();
+                if (result.status !== 'success') throw new Error(result.message || '取得菜單失敗');
                 let allData = result.data || [];
                 publishedMenus = allData.filter(m => m.isPublished === true);
                 document.getElementById('loading-state').classList.add('hidden');
@@ -150,40 +151,58 @@
 
             const selectedMenu = publishedMenus.find(m => m.id === id);
             if(selectedMenu) {
-                renderMenuContent(selectedMenu.data, selectedMenu.imageUrl);
+                renderMenuContent(selectedMenu.data, selectedMenu.imageUrl, selectedMenu.imageViewUrl);
             }
         }
 
-        function renderMenuContent(menuData, imageUrl) {
+        function renderMenuContent(menuData, imageUrl, imageViewUrl) {
             const grid = document.getElementById('menu-grid');
             const catNav = document.getElementById('category-nav');
             const imgBtnContainer = document.getElementById('original-image-btn-container');
-            
-            grid.innerHTML = '';
-            catNav.innerHTML = ''; 
 
-            // 💡 產生「點我看原始菜單」按鈕
+            grid.innerHTML = '';
+            catNav.innerHTML = '';
+
+            // 原始菜單圖片：直接顯示在前台，點擊後開啟 Drive 原檔檢視頁。
             if (imageUrl) {
+                const viewUrl = imageViewUrl || imageUrl;
                 imgBtnContainer.innerHTML = `
-                    <a href="${imageUrl}" target="_blank" class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-indigo-100 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-200 transition shadow-sm border border-indigo-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        點我看原始菜單
-                    </a>`;
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div class="font-bold text-slate-700">📷 原始菜單</div>
+                            <a href="${viewUrl}" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-indigo-600 hover:text-indigo-800">
+                                開啟原圖 ↗
+                            </a>
+                        </div>
+                        <a href="${viewUrl}" target="_blank" rel="noopener noreferrer" title="點擊查看原圖">
+                            <img
+                                src="${imageUrl}"
+                                alt="原始菜單圖片"
+                                class="w-full max-h-[800px] object-contain rounded-xl border border-slate-200 bg-slate-50 cursor-zoom-in hover:opacity-95 transition"
+                                loading="lazy"
+                                onerror="this.closest('.bg-white').querySelector('.image-error').classList.remove('hidden'); this.style.display='none';"
+                            >
+                        </a>
+                        <p class="image-error hidden text-sm text-red-500 font-bold mt-3">
+                            原始圖片目前無法顯示，請確認 Google Drive 檔案已允許「知道連結的任何人」檢視。
+                        </p>
+                    </div>`;
                 imgBtnContainer.classList.remove('hidden');
             } else {
+                imgBtnContainer.innerHTML = '';
                 imgBtnContainer.classList.add('hidden');
             }
-            
+
             menuData.forEach((cat, index) => {
                 catNav.innerHTML += `<button onclick="scrollToCategory('cat-${index}')" class="whitespace-nowrap px-4 py-1.5 bg-white border border-slate-200 rounded-full text-slate-700 font-bold hover:bg-indigo-50 hover:text-indigo-600 transition shadow-sm text-sm">${cat.category}</button>`;
-                
+
                 let html = `<div id="cat-${index}" style="scroll-margin-top: 130px;"><h2 class="text-xl font-bold border-l-4 border-indigo-500 pl-3 mb-4">${cat.category}</h2><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">`;
                 cat.items.forEach(item => {
                     html += `
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
                             <h3 class="font-bold text-lg">${item.name}</h3>
                             <p class="text-xl font-black mt-2 text-slate-700"><span class="text-sm">NT$</span>${item.price}</p>
-                            <button onclick="openItemModal('${item.name}', ${item.price})" class="mt-4 bg-slate-50 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 font-bold py-2.5 rounded-xl transition">
+                            <button onclick="openItemModal('${item.name.replace(/'/g, "\\'")}', ${item.price})" class="mt-4 bg-slate-50 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 font-bold py-2.5 rounded-xl transition">
                                 + 加入購物車
                             </button>
                         </div>

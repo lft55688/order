@@ -168,7 +168,8 @@
         let parsedMenuData = [];     
         let base64Image = "";
         let imageMimeType = "image/jpeg"; 
-        let currentImageUrl = ""; // 💡 記錄當前編輯菜單的圖片
+        let currentImageUrl = ""; // 圖片顯示網址
+        let currentImageViewUrl = ""; // Google Drive 原檔檢視網址
 
         let editingOrderData = null; 
 
@@ -251,12 +252,14 @@
             document.getElementById('menu-editor-view').classList.remove('hidden');
             document.getElementById('preview-container').classList.add('hidden');
             base64Image = "";
-            currentImageUrl = ""; // 💡 Reset
+            currentImageUrl = "";
+            currentImageViewUrl = "";
 
             if (id) {
                 const menu = allMenus.find(m => m.id === id);
                 document.getElementById('menu-name-input').value = menu.name;
-                currentImageUrl = menu.imageUrl || ""; // 💡 載入舊圖網址
+                currentImageUrl = menu.imageUrl || "";
+                currentImageViewUrl = menu.imageViewUrl || "";
                 parsedMenuData = JSON.parse(JSON.stringify(menu.data)); 
             } else {
                 document.getElementById('menu-name-input').value = "";
@@ -283,29 +286,43 @@
             reader.readAsDataURL(file);
         }
 
-		async function analyzeImage() {
+        async function analyzeImage() {
             if (!base64Image) return alert("請先上傳圖片！");
             const btn = document.getElementById('analyze-btn'), text = document.getElementById('analyze-text'), spinner = document.getElementById('analyze-spinner');
-            btn.disabled = true; text.innerText = "AI 努力辨識中..."; spinner.classList.remove('hidden');
+            btn.disabled = true; text.innerText = "圖片上傳 + AI 辨識中..."; spinner.classList.remove('hidden');
 
             try {
-                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'analyzeImage', base64Image: base64Image, mimeType: imageMimeType }) });
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'analyzeImage',
+                        base64Image: base64Image,
+                        mimeType: imageMimeType
+                    })
+                });
+
                 const result = await response.json();
-                if (result.status === 'error') throw new Error(result.message);
-                
-                parsedMenuData = result.data;
-                currentImageUrl = result.imageUrl || ""; 
-                
+
+                if (result.status !== 'success') {
+                    throw new Error(result.message || '後端處理失敗');
+                }
+
+                if (!result.imageUrl) {
+                    throw new Error('AI 辨識成功，但後端沒有回傳圖片網址。');
+                }
+
+                parsedMenuData = Array.isArray(result.data) ? result.data : [];
+                currentImageUrl = result.imageUrl || "";
+                currentImageViewUrl = result.imageViewUrl || result.imageUrl || "";
+
                 renderEditorForm();
 
-                // 💡 檢查是否有正確取得圖片網址
-                //if (currentImageUrl) {
-                //    alert("✅ 辨識成功！原始圖片已成功存入雲端。");
-                //} else {
-                //    alert("⚠️ 辨識成功，但圖片存入雲端失敗。\n錯誤原因：" + (result.driveError || "無") + "\n(請確認是否有確實將 GAS 發布為「新版本」)");
-                //}
+                alert("✅ AI 辨識成功，原始菜單圖片也已上傳到雲端。請按「儲存此菜單」完成發布資料儲存。");
 
-            } catch (e) { alert("辨識失敗：" + e.message); } finally {
+            } catch (e) {
+                alert("辨識／圖片上傳失敗：" + e.message);
+            } finally {
                 btn.disabled = false; text.innerText = "重新辨識"; spinner.classList.add('hidden');
             }
         }
@@ -357,20 +374,30 @@
                 const menu = allMenus.find(m => m.id === currentEditingMenuId);
                 menu.name = nameInput; 
                 menu.data = parsedMenuData;
-                menu.imageUrl = currentImageUrl; // 💡 儲存
+                menu.imageUrl = currentImageUrl;
+                menu.imageViewUrl = currentImageViewUrl;
             } else {
                 allMenus.push({ 
                     id: 'MENU-' + Date.now(), 
                     name: nameInput, 
                     isPublished: false, 
                     data: parsedMenuData,
-                    imageUrl: currentImageUrl // 💡 儲存
+                    imageUrl: currentImageUrl,
+                    imageViewUrl: currentImageViewUrl
                 });
             }
 
             try {
-                await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMenu', data: allMenus }) });
-                alert("🎉 儲存成功！");
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'updateMenu', data: allMenus })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    throw new Error(result.message || 'Google Apps Script 儲存失敗');
+                }
+                alert("🎉 菜單與原始圖片網址儲存成功！");
                 renderMenuList();
                 closeMenuEditor();
             } catch(e) { alert("儲存失敗：" + e); } finally {
